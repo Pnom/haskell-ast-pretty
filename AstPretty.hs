@@ -1,13 +1,13 @@
 import Language.Haskell.Exts.Annotated
 import Control.Monad.State
-import AstUtils
+
+import Debug.Trace
 
 data DocState = DocState {      
-        loc  :: SrcLoc,
-        nestSize :: Int
+        pos :: !SrcLoc,
+        nestSize :: !Int
         } deriving Show
 
---type DocM a = State SrcLoc a
 type DocM a = State DocState a
 
 -- --------------------------------------------------------------------------        
@@ -22,14 +22,12 @@ format s = do
 -- --------------------------------------------------------------------------        
 
 getPos :: DocM SrcLoc
-getPos = do
-        DocState l n <- get
-        return l
+getPos = gets pos
 
 putPos :: SrcLoc -> DocM SrcLoc
 putPos l = do
         DocState _ n <- get
-        put $ DocState l n        
+        put $! DocState l n        
         return l
         
 -- --------------------------------------------------------------------------        
@@ -71,87 +69,101 @@ class AstPretty ast where
 instance AstPretty ModuleName where
         astPretty (ModuleName l s) = do
                 span <- format s
-                return $ ModuleName (SrcSpanInfo span []) s        
-        
+                return $ ModuleName (noInfoSpan span) s        
+
+
 -- --------------------------------------------------------------------------
+-- QName instance 
+
+instance AstPretty SpecialCon where
+        astPretty sc = undefined
+
+-- --------------------------------------------------------------------------
+-- QName instance 
 
 instance AstPretty QName where
-
-        astPretty qn =  undefined
+        astPretty qn
+                | isSymbol (getName qn) = do
+                        openParen <- format "("
+                        p <- space 1
+                        qn' <- rawQName qn
+                        closeParen <- format ")"
+                        let span = SrcSpanInfo (mergeSrcSpan openParen closeParen) (openParen : p : ((srcInfoPoints $ ann qn') ++ [closeParen]))
+                        return $ amap (const span) qn'
+                | otherwise = rawQName qn
 
 -- --------------------------------------------------------------------------
+-- QName utils
 
-epQName :: QName t -> DocM (QName SrcSpanInfo)
+rawQName :: QName t -> DocM (QName SrcSpanInfo)
 
-epQName (Qual _ mn n)  = do
+rawQName (Qual _ mn n)  = do
         m' <- astPretty mn
         pnt <- format "."
-        n'  <- epName n
-        let SrcSpanInfo span _ = combine (ann m') (ann n')
-        return $ Qual (SrcSpanInfo span [pnt]) m' n'
+        n'  <- rawName n
+        let span  = (ann m') <++> (ann n')
+        return $ Qual (span <** [pnt]) m' n'
 
-epQName (UnQual _ n) = do 
-        n' <- epName n
+rawQName (UnQual _ n) = do 
+        n' <- rawName n
         return $ UnQual (ann n') n'
 
-epQName (Special _ sc) = undefined
+rawQName (Special _ sc) = do
+        val <- astPretty sc
+        return $ Special (noInfoSpan.srcInfoSpan $ ann val) val
 
 -- --------------------------------------------------------------------------
 
-instance AstPretty Name where
-        astPretty n@(Ident _ _) = epName n
+getName :: QName l -> Name l
+getName (UnQual _ s) = s
+getName (Qual _ _ s) = s
+getName (Special l (Cons _)) = Symbol l ":"
+getName (Special l (FunCon _)) = Symbol l "->"
+getName (Special l s) = Ident l (specialName s)
 
+-- --------------------------------------------------------------------------
+
+specialName :: SpecialCon l -> String
+specialName (UnitCon _) = "()"
+specialName (ListCon _) = "[]"
+specialName (FunCon  _) = "->"
+specialName (TupleCon _ b n) = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
+    where hash = case b of
+                   Unboxed -> "#"
+                   _       -> ""
+specialName (Cons _) = ":"
+
+-- --------------------------------------------------------------------------
+-- Name instance 
+
+instance AstPretty Name where
+        astPretty n@(Ident _ _) = rawName n
+        
         astPretty n@(Symbol _ str) = do
                         -- maybe generalization is possible, like taketToParen "(" ")" $ ....
-                        SrcLoc f ls cs <- getPos
                         openParen <- format "("
                         p <- space 1
                         _ <- format str
                         closeParen <- format ")"
-                        SrcLoc _ le ce <- getPos
-                        let span = SrcSpan f ls cs le ce
-                        return $ Symbol (SrcSpanInfo span [openParen, p, closeParen]) str
+                        return $ Symbol (SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, p, closeParen]) str
 
 -- --------------------------------------------------------------------------
 
-epName :: Name t -> DocM (Name SrcSpanInfo)
-epName (Symbol _ s) = do
+isSymbol :: Name l -> Bool
+isSymbol (Symbol _ _) = True
+isSymbol _ = False
+
+-- --------------------------------------------------------------------------
+
+rawName :: Name t -> DocM (Name SrcSpanInfo)
+
+rawName (Symbol _ s) = do
         span <- format s
-        return $ Symbol (SrcSpanInfo span []) s
+        return $ Symbol (noInfoSpan  span) s
         
-epName (Ident _ s) = do
+rawName (Ident _ s) = do
         span <- format s
-        return $ Ident (SrcSpanInfo span []) s
-
--- --------------------------------------------------------------------------        
--- tests
-
-srcSpan :: Int -> Int -> SrcSpan
-srcSpan y x = SrcSpan {srcSpanFilename = "<unknown>.hs", srcSpanStartLine = 1, srcSpanStartColumn = 1, srcSpanEndLine = 1 + y, srcSpanEndColumn = 1 + x}
-
-ident s = Ident (SrcSpanInfo (srcSpan 0 $ length s) []) s
-
-symbol s = Symbol (SrcSpanInfo (srcSpan 0 $ length s) []) s
-
-moduleName s = ModuleName (SrcSpanInfo (srcSpan 0 $ length s) []) s
-
-zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
-
-showRes x = do
-        let (r, s) = (runState x) zeroSt
-        putStrLn ""
-        putStr "SrcLoc: "
-        putStrLn $ show s 
-        putStrLn ""
-        putStrLn $ show r
-        
--- -------------------------
--- Name tests
-
-
-t =  showRes.astPretty $ symbol "#~"
-
-ex = exactPrint (fst $ runState (astPretty $ symbol "#~") zeroSt) []
+        return $ Ident (noInfoSpan  span) s
 
 {-
 SrcSpan \{srcSpanFilename = (\"<\w+>.hs\"), srcSpanStartLine = (\d+), srcSpanStartColumn = (\d+), srcSpanEndLine = (\d+), srcSpanEndColumn = (\d+)\}
