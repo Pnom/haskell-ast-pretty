@@ -39,17 +39,10 @@ line = do
 
 -- --------------------------------------------------------------------------        
 
-right :: Int -> DocM SrcLoc
-right x = do
+space :: Int -> DocM SrcLoc
+space x = do
         SrcLoc f l c <- getPos
         putPos $ SrcLoc f l (c + x)
-        
--- --------------------------------------------------------------------------        
-
-space :: Int -> DocM SrcSpan
-space x = do
-        SrcLoc f l c <- right x
-        return $ SrcSpan f l c l (c + 1)  
         
 -- --------------------------------------------------------------------------        
 
@@ -85,10 +78,10 @@ instance AstPretty QName where
         astPretty qn
                 | isSymbol (getName qn) = do
                         openParen <- format "("
-                        p <- space 1
+                        _ <- space 1
                         qn' <- rawQName qn
                         closeParen <- format ")"
-                        let span = SrcSpanInfo (mergeSrcSpan openParen closeParen) (openParen : p : ((srcInfoPoints $ ann qn') ++ [closeParen]))
+                        let span = SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, srcInfoSpan $ ann qn', closeParen]
                         return $ amap (const span) qn'
                 | otherwise = rawQName qn
 
@@ -99,10 +92,10 @@ rawQName :: QName t -> DocM (QName SrcSpanInfo)
 
 rawQName (Qual _ mn n)  = do
         m' <- astPretty mn
-        pnt <- format "."
+        _  <- format "."
         n'  <- rawName n
         let span  = (ann m') <++> (ann n')
-        return $ Qual (span <** [pnt]) m' n'
+        return $ Qual span m' n'
 
 rawQName (UnQual _ n) = do 
         n' <- rawName n
@@ -139,14 +132,13 @@ specialName (Cons _) = ":"
 instance AstPretty Name where
         astPretty n@(Ident _ _) = rawName n
         
-        astPretty n@(Symbol _ str) = do
-                        -- maybe generalization is possible, like taketToParen "(" ")" $ ....
+        astPretty (Symbol _ str) = do
                         openParen <- format "("
-                        p <- space 1
-                        _ <- format str
+                        _ <- space 1
+                        name <- format str
                         closeParen <- format ")"
-                        return $ Symbol (SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, p, closeParen]) str
-
+                        return $ Symbol (SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, name, closeParen]) str
+        
 -- --------------------------------------------------------------------------
 
 isSymbol :: Name l -> Bool
@@ -170,4 +162,3 @@ SrcSpan \{srcSpanFilename = (\"<\w+>.hs\"), srcSpanStartLine = (\d+), srcSpanSta
 
 \(SrcSpan \1 \2 \3 \4 \5\)
 -}        
-        
