@@ -1,3 +1,13 @@
+module AstPretty ( AstPretty(astPretty), 
+        DocState(..),
+        DocM,
+        format,
+        line,
+        space,
+        nest,
+        prettyList
+        ) where
+
 import Language.Haskell.Exts.Annotated
 import Control.Monad.State
 
@@ -35,7 +45,7 @@ putPos l = do
 line :: DocM SrcLoc
 line = do
         DocState (SrcLoc f l c) n <- get
-        putPos $ SrcLoc f (l + 1) n
+        putPos $ SrcLoc f (l + 1) (if n > 0 then n else 1)
 
 -- --------------------------------------------------------------------------        
 
@@ -64,27 +74,92 @@ instance AstPretty ModuleName where
                 span <- format s
                 return $ ModuleName (noInfoSpan span) s        
 
+-- --------------------------------------------------------------------------
+--  CName instance 
+
+instance AstPretty  CName where
+
+        astPretty (VarName _ name) = do 
+                n <- astPretty name
+                return $ VarName (noInfoSpan.srcInfoSpan $ ann n) n
+
+        astPretty (ConName _ name) = do 
+                n <- astPretty name
+                return $ ConName (noInfoSpan.srcInfoSpan $ ann n) n
 
 -- --------------------------------------------------------------------------
--- QName instance 
+-- SpecialCon instance 
 
 instance AstPretty SpecialCon where
-        astPretty sc = undefined
 
+        astPretty (UnitCon _) = do
+                span <- format "()"
+                return $ UnitCon (noInfoSpan  span)
+                
+        astPretty (ListCon _) = do
+                span <- format "[]"
+                return $ ListCon (noInfoSpan  span)
+                
+        astPretty (FunCon _) = do
+                span <- format "->"
+                return $ FunCon (noInfoSpan  span)
+
+        astPretty (TupleCon _ b n) = do
+                let hash = if b == Unboxed then "#" else ""
+                span <- format $ "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
+                return $ TupleCon (noInfoSpan  span) b n
+                
+        astPretty (Cons _) = do
+                span <- format ":"
+                return $ Cons (noInfoSpan  span)
+                
+        astPretty (UnboxedSingleCon _) = do
+                span <- format "(# #)"
+                return $ UnboxedSingleCon (noInfoSpan  span)
+
+-- --------------------------------------------------------------------------
+-- ExportSpec instance 
+
+instance AstPretty ExportSpec where
+        
+        astPretty (EVar _ name) = do 
+                qn <- astPretty name
+                return $ EVar (noInfoSpan.srcInfoSpan $ ann qn) qn
+                
+        astPretty (EAbs _ name) = do 
+                qn <- astPretty name
+                return $ EAbs (noInfoSpan.srcInfoSpan $ ann qn) qn
+                
+        astPretty (EThingAll _ name) = do 
+                qn <- astPretty name
+                return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
+                
+        astPretty (EThingWith l name nameList) = undefined
+        
+        astPretty (EModuleContents _ m) = do 
+                qn <- astPretty m
+                return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
+        
 -- --------------------------------------------------------------------------
 -- QName instance 
 
 instance AstPretty QName where
         astPretty qn
-                | isSymbol (getName qn) = do
+                | needParens = do
                         openParen <- format "("
                         _ <- space 1
                         qn' <- rawQName qn
                         closeParen <- format ")"
-                        let span = SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, srcInfoSpan $ ann qn', closeParen]
+                        let span = (openParen <^^> closeParen) <** [openParen, srcInfoSpan $ ann qn', closeParen]
                         return $ amap (const span) qn'
                 | otherwise = rawQName qn
-
+                where needParens = case qn of
+                        UnQual _    (Symbol _ _) -> True
+                        Qual   _  _ (Symbol _ _) -> True
+                        Special _ (Cons _)    -> True
+                        Special _ (FunCon _)  -> True
+                        _ -> False
+                
 -- --------------------------------------------------------------------------
 -- QName utils
 
@@ -106,27 +181,6 @@ rawQName (Special _ sc) = do
         return $ Special (noInfoSpan.srcInfoSpan $ ann val) val
 
 -- --------------------------------------------------------------------------
-
-getName :: QName l -> Name l
-getName (UnQual _ s) = s
-getName (Qual _ _ s) = s
-getName (Special l (Cons _)) = Symbol l ":"
-getName (Special l (FunCon _)) = Symbol l "->"
-getName (Special l s) = Ident l (specialName s)
-
--- --------------------------------------------------------------------------
-
-specialName :: SpecialCon l -> String
-specialName (UnitCon _) = "()"
-specialName (ListCon _) = "[]"
-specialName (FunCon  _) = "->"
-specialName (TupleCon _ b n) = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
-    where hash = case b of
-                   Unboxed -> "#"
-                   _       -> ""
-specialName (Cons _) = ":"
-
--- --------------------------------------------------------------------------
 -- Name instance 
 
 instance AstPretty Name where
@@ -137,7 +191,8 @@ instance AstPretty Name where
                         _ <- space 1
                         name <- format str
                         closeParen <- format ")"
-                        return $ Symbol (SrcSpanInfo (mergeSrcSpan openParen closeParen) [openParen, name, closeParen]) str
+                        let span = (openParen <^^> closeParen) <** [openParen, name, closeParen]
+                        return $ Symbol span str
         
 -- --------------------------------------------------------------------------
 
@@ -157,8 +212,31 @@ rawName (Ident _ s) = do
         span <- format s
         return $ Ident (noInfoSpan  span) s
 
+
+-- --------------------------------------------------------------------------
+
+prettyList :: AstPretty ast =>
+  DocM SrcSpan -> DocM SrcSpan -> DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+prettyList _ _ _ [] = do
+        p <- getPos
+        return (noInfoSpan $ mkSrcSpan p p , [])
+prettyList openParen closeParen sep (e:es) = do
+        openSpan <- openParen
+        x <-astPretty e
+        (ps, xs) <- foldM (\ (ps, xs) i -> do
+                p <- sep
+                x <- astPretty i 
+                return (p:ps, x:xs))
+                ([openSpan], [x])
+                es
+        closeSpan <- closeParen
+        let span = SrcSpanInfo (mergeSrcSpan openSpan closeSpan) (reverse $ closeSpan : ps )
+        return $ (span, reverse xs)
+
+
+
 {-
-SrcSpan \{srcSpanFilename = (\"<\w+>.hs\"), srcSpanStartLine = (\d+), srcSpanStartColumn = (\d+), srcSpanEndLine = (\d+), srcSpanEndColumn = (\d+)\}
+SrcSpan \{srcSpanFilename = (\"\w+.hs\"), srcSpanStartLine = (\d+), srcSpanStartColumn = (\d+), srcSpanEndLine = (\d+), srcSpanEndColumn = (\d+)\}
 
 \(SrcSpan \1 \2 \3 \4 \5\)
 -}        
