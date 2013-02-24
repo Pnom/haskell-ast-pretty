@@ -1,15 +1,18 @@
 module AstPretty ( AstPretty(astPretty),
   DocState(..),
   DocM,
-  format,
-  line,
-  space,
-  nest,
-  prettyList
+  format, line, space, nest,
+  prettyList,
+  renderWithMode, renderWithDefMode,
+  PrettyMode(..), defPrettyMode
   ) where
 
 import Language.Haskell.Exts.Annotated
+import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
+import Control.Monad.Reader
+
+import qualified Text.PrettyPrint as P
 
 import Debug.Trace
 
@@ -18,7 +21,21 @@ data DocState = DocState {
   nestSize :: !Int
   } deriving Show
 
-type DocM a = State DocState a
+data PrettyMode = PrettyMode PR.PPHsMode
+
+defPrettyMode = PrettyMode PR.defaultMode
+
+type DocM = ReaderT PrettyMode (State DocState)
+
+-- --------------------------------------------------------------------------
+-- | render the document with a given mode.
+
+renderWithMode :: PrettyMode -> DocState -> DocM a -> a
+renderWithMode mode state doc = fst $ runState (runReaderT doc mode) state
+
+-- | render the document with 'defaultMode'.
+renderWithDefMode :: DocState -> DocM a -> a
+renderWithDefMode = renderWithMode defPrettyMode
 
 -- --------------------------------------------------------------------------
 
@@ -214,12 +231,11 @@ rawName (Ident _ s) = do
   span <- format s
   return $ Ident (noInfoSpan  span) s
 
-
 -- --------------------------------------------------------------------------
 
 prettyList :: AstPretty ast =>
   DocM SrcSpan -> DocM SrcSpan -> DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-  
+
 prettyList _ _ _ [] = do
   p <- getPos
   return (noInfoSpan $ mkSrcSpan p p , [])

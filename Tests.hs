@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-
 import AstPretty
 import AstVerify
 import AstSerial
@@ -17,31 +16,25 @@ import GHC.Generics
 import Language.Haskell.Exts.Annotated
 import Language.Haskell.Exts.Pretty
 
-
-
-
 deriving instance Generic DocState
-instance Monad m => Serial m DocState 
+instance Monad m => Serial m DocState
 
 -- --------------------------------------------------------------------------
 
 isDocStateCorrect (DocState p n) = not (null $ srcFilename p) && srcLine p > 0 && srcColumn p > 0 && n >= 0
 
-prettyResult :: DocState -> DocM (ast SrcSpanInfo) -> ast SrcSpanInfo
-prettyResult start m = fst $ runState m start
-
 -- --------------------------------------------------------------------------
 
 propAstCorrect :: (Monad m, AstVerify ast, AstPretty ast) => DocState -> ast a -> Property m
 propAstCorrect start ast =  isDocStateCorrect start ==>
-  isAstCorrect $ prettyResult start (astPretty ast)
+  isAstCorrect $ renderWithDefMode start (astPretty ast)
 
 -- --------------------------------------------------------------------------
 
 propLineCorrect :: (Monad m, AstVerify ast, AstPretty ast) => DocState -> ast a -> Property m
 propLineCorrect start@(DocState pos n) ast = isDocStateCorrect start && n == 0 ==>
   let
-    ast' = prettyResult start $ do
+    ast' = renderWithDefMode start $ do
       _ <- line
       astPretty ast
   in
@@ -56,7 +49,7 @@ propLineModule st name = propLineCorrect st name
 propNestCorrect :: (Monad m, Show (ast SrcSpanInfo), AstVerify ast, AstPretty ast) => DocState -> ast a -> Int -> Property m
 propNestCorrect start@(DocState pos n) ast nst = isDocStateCorrect start && nst >= 0 ==>
   let
-  ast' = prettyResult start $ do
+  ast' = renderWithDefMode start $ do
     _ <- nest nst
     _ <- line
     astPretty ast
@@ -66,7 +59,7 @@ propNestCorrect start@(DocState pos n) ast nst = isDocStateCorrect start && nst 
     (1 + srcLine pos, if n + nst == 0 then 1 else n + nst) ==
       (srcSpanStart.srcInfoSpan $ ann ast')
 
-propNestModule :: Monad m => DocState -> ModuleName l -> Int -> Property m 
+propNestModule :: Monad m => DocState -> ModuleName l -> Int -> Property m
 propNestModule st name n = propNestCorrect st name n
 
 -- --------------------------------------------------------------------------
@@ -74,7 +67,7 @@ propNestModule st name n = propNestCorrect st name n
 propSpaceCorrect :: (Monad m, AstVerify ast, AstPretty ast) => DocState -> ast a -> Int -> Property m
 propSpaceCorrect start@(DocState pos _) ast s = isDocStateCorrect start && s >= 0 ==>
   let
-  ast' = prettyResult start $ do
+  ast' = renderWithDefMode start $ do
     _ <- space s
     astPretty ast
   in
@@ -87,7 +80,7 @@ propSpaceModule st name sp = propSpaceCorrect st name sp
 -- --------------------------------------------------------------------------
 
 propAstCorrectAll :: (Monad m, Show (ast SrcSpanInfo), AstVerify ast, AstPretty ast) => DocState -> [ast a] -> Property m
-propAstCorrectAll start@(DocState p n) asts = let pretty i = fst $ (runState $ astPretty i) start in
+propAstCorrectAll start@(DocState p n) asts = let pretty i = renderWithDefMode start $ astPretty i in
   srcLine p > 0 && srcColumn p > 0 && n >= 0 ==>
   all isAstCorrect (map pretty asts)
 
@@ -103,3 +96,7 @@ propModuleName st name = propAstCorrect st $ ModuleName undefined name
 -- --------------------------------------------------------------------------
 
 propCName st n = (isAstCorrect n) ==> propAstCorrectAll st [VarName undefined n, ConName undefined n]
+
+-- --------------------------------------------------------------------------
+
+zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
