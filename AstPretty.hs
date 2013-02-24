@@ -4,7 +4,8 @@ module AstPretty ( AstPretty(astPretty),
   format, line, space, nest,
   prettyList,
   renderWithMode, renderWithDefMode,
-  PrettyMode(..), defPrettyMode
+  PrettyMode(..), defPrettyMode,
+  parenList, braceList
   ) where
 
 import Language.Haskell.Exts.Annotated
@@ -149,13 +150,18 @@ instance AstPretty ExportSpec where
 
   astPretty (EThingAll _ name) = do
     qn <- astPretty name
+    undefined -- what about "(..)"?
     return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
 
-  astPretty (EThingWith l name nameList) = undefined
+  astPretty (EThingWith l name nameList) = do
+    n <- astPretty name
+    (p, ns) <- parenList nameList
+    let sp = ( ann n <++> p) <** srcInfoPoints p
+    return $ EThingWith sp n ns
 
   astPretty (EModuleContents _ m) = do
-    qn <- astPretty m
-    return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
+          qn <- astPretty m
+          return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
 
 -- --------------------------------------------------------------------------
 -- QName instance
@@ -242,7 +248,7 @@ prettyList _ _ _ [] = do
 
 prettyList openParen closeParen sep (e:es) = do
   openSpan <- openParen
-  x <-astPretty e
+  x <- astPretty e
   (ps, xs) <- foldM (\ (ps, xs) i -> do
     p <- sep
     x <- astPretty i
@@ -252,3 +258,27 @@ prettyList openParen closeParen sep (e:es) = do
   closeSpan <- closeParen
   let span = SrcSpanInfo (mergeSrcSpan openSpan closeSpan) (reverse $ closeSpan : ps )
   return $ (span, reverse xs)
+
+-- --------------------------------------------------------------------------
+
+listSep :: DocM SrcSpan -> DocM SrcSpan
+listSep sep = do
+  PrettyMode mode <- ask
+  if layout mode == PPOffsideRule || layout mode == PPSemiColon
+    then do
+      -- should be like fsep from Text-PrettyPrint-HughesPJ
+      undefined
+    else do
+      span <- sep
+      _ <- space 1
+      return span
+
+-- --------------------------------------------------------------------------
+
+parenList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+parenList = prettyList (format "(") (format ")") (listSep $ format ",")
+
+-- --------------------------------------------------------------------------
+
+braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+braceList = prettyList (format "[") (format "]") (listSep $ format ",")
