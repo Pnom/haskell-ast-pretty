@@ -60,24 +60,26 @@ putPos l = do
 
 -- --------------------------------------------------------------------------
 
-line :: DocM SrcLoc
+line :: DocM ()
 line = do
   DocState (SrcLoc f l c) n <- get
-  putPos $ SrcLoc f (l + 1) (if n > 0 then n else 1)
+  putPos $! SrcLoc f (l + 1) (if n > 0 then n else 1)
+  return ()
 
 -- --------------------------------------------------------------------------
 
-space :: Int -> DocM SrcLoc
+space :: Int -> DocM ()
 space x = do
   SrcLoc f l c <- getPos
-  putPos $ SrcLoc f l (c + x)
+  putPos $! SrcLoc f l (c + x)
+  return ()
 
 -- --------------------------------------------------------------------------
 
 nest :: Int -> DocM ()
 nest x = do
   DocState l n <- get
-  put $ DocState l (n + x)
+  put $! DocState l (n + x)
   return ()
 
 -- --------------------------------------------------------------------------

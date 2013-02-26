@@ -8,6 +8,7 @@ import AstSerial
 import Control.Monad.State
 import Control.Monad.Reader
 
+import Debug.Trace
 import Test.SmallCheck
 import Test.SmallCheck.Series
 
@@ -41,12 +42,12 @@ propLineCorrect start@(DocState pos n) ast = isDocStateCorrect start && n == 0 =
     isAstCorrect ast' &&
     (1 + srcLine pos, 1) == (srcSpanStart.srcInfoSpan $ ann ast')
 
-propLineModule :: Monad m => DocState -> ModuleName l -> Property m
-propLineModule st name = propLineCorrect st name
+propLineModule :: Monad m => DocState -> String -> Property m
+propLineModule st name = propLineCorrect st (ModuleName undefined name)
 
 -- --------------------------------------------------------------------------
 
-propNestCorrect :: (Monad m, Show (ast SrcSpanInfo), AstVerify ast, AstPretty ast) => DocState -> ast a -> Int -> Property m
+propNestCorrect :: (Monad m, AstVerify ast, AstPretty ast) => DocState -> ast a -> Int -> Property m
 propNestCorrect start@(DocState pos n) ast nst = isDocStateCorrect start && nst >= 0 ==>
   let
   ast' = renderWithDefMode start $ do
@@ -59,8 +60,8 @@ propNestCorrect start@(DocState pos n) ast nst = isDocStateCorrect start && nst 
     (1 + srcLine pos, if n + nst == 0 then 1 else n + nst) ==
       (srcSpanStart.srcInfoSpan $ ann ast')
 
-propNestModule :: Monad m => DocState -> ModuleName l -> Int -> Property m
-propNestModule st name n = propNestCorrect st name n
+propNestModule :: Monad m => DocState -> String -> Int -> Property m
+propNestModule st name n = propNestCorrect st (ModuleName undefined name) n
 
 -- --------------------------------------------------------------------------
 
@@ -74,8 +75,8 @@ propSpaceCorrect start@(DocState pos _) ast s = isDocStateCorrect start && s >= 
     isAstCorrect ast' &&
     (srcLine pos, s + srcColumn pos) == (srcSpanStart.srcInfoSpan $ ann ast')
 
-propSpaceModule :: Monad m => DocState -> ModuleName l -> Int -> Property m
-propSpaceModule st name sp = propSpaceCorrect st name sp
+propSpaceModule :: Monad m => DocState -> String -> Int -> Property m
+propSpaceModule st name sp = propSpaceCorrect st (ModuleName undefined name) sp
 
 -- --------------------------------------------------------------------------
 
