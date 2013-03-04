@@ -93,6 +93,70 @@ instance AstPretty ModuleName where
     span <- format s
     return $ ModuleName (noInfoSpan span) s
 
+------------------------- Pragmas ---------------------------------------
+
+instance AstPretty ModulePragma where
+  astPretty (LanguagePragma _ []) = do
+    b <- getPos
+    return $ LanguagePragma (noInfoSpan $ mkSrcSpan b b) []
+
+  astPretty (LanguagePragma _ ns) = do
+    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") (infoPrettyList (myFsep $ format ",") ns)
+    return $ LanguagePragma span ls
+
+  astPretty (OptionsPragma _ mbTool s) = do
+    let
+      t = case mbTool of
+        Nothing -> ""
+        Just (UnknownTool u) -> show u
+        Just tool -> show tool
+
+    sp <- format $ "{-# OPTIONS_" ++ t
+    _  <- format s
+    cp <- format "#-}"
+    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
+    return $ OptionsPragma span mbTool s
+
+  astPretty (AnnModulePragma _ ann) = do
+    sp <- format "{-# ANN"
+    ann'  <- astPretty ann
+    cp <- format "#-}"
+    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
+    return $ AnnModulePragma span ann'
+
+-- --------------------------------------------------------------------------
+
+instance AstPretty Annotation where
+  astPretty (Ann _ n e) = do
+    sp <- getPos
+    n' <- astPretty n
+    e' <- astPretty e
+    ep <- getPos
+    let span = noInfoSpan $ mkSrcSpan sp ep
+    return $ Ann span n' e'
+
+  astPretty (TypeAnn _ n e) = do
+    sp <- getPos
+    t <- format "type"
+    n' <- astPretty n
+    e' <- astPretty e
+    ep <- getPos
+    let span = SrcSpanInfo (mkSrcSpan sp ep) [t]
+    return $ TypeAnn span n' e'
+
+  astPretty (ModuleAnn _ e) = do
+    sp <- getPos
+    t <- format "module"
+    e' <- astPretty e
+    ep <- getPos
+    let span = SrcSpanInfo (mkSrcSpan sp ep) [t]
+    return $ ModuleAnn span e'
+
+------------------------- Expressions -------------------------
+
+instance AstPretty Exp where
+  astPretty = undefined
+
 -- --------------------------------------------------------------------------
 --  CName instance
 
@@ -257,7 +321,6 @@ noInfoPrettyList sep (e:es) = do
     [e']
     es
   endp <- getPos
-
   return (noInfoSpan $ mkSrcSpan begp endp, reverse xs)
 
 -- --------------------------------------------------------------------------
@@ -315,10 +378,10 @@ hsep sep = do
 
 fsep :: DocM a -> DocM a
 fsep sep = do
-      -- should be like fsep from Text-PrettyPrint-HughesPJ
-      s <- sep
-      _    <- line
-      return s
+  -- should be like fsep from Text-PrettyPrint-HughesPJ
+  s <- sep
+  _ <- line
+  return s
 
 ------------------------- pp utils -------------------------
 
@@ -329,6 +392,19 @@ parenList xs = genericParenList (format "(") (format ")") (infoPrettyList (layou
 
 braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 braceList xs = genericParenList (format "{") (format "}") (infoPrettyList (layoutChoice fsep hsep $ format ",") xs)
+
+-- --------------------------------------------------------------------------
+
+myFsepSimple = layoutChoice fsep hsep
+
+-- --------------------------------------------------------------------------
+
+myFsep = layoutChoice fsep' hsep
+  where
+    fsep' dl = do
+      PrettyMode mode <- ask
+      let n = onsideIndent mode
+      nest n >> fsep ( nest (-n) >> dl)
 
 -- --------------------------------------------------------------------------
 
