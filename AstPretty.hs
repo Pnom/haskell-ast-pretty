@@ -2,7 +2,6 @@ module AstPretty ( AstPretty(astPretty),
   DocState(..),
   DocM,
   format, line, space, nest,
-  prettyList,
   renderWithMode, renderWithDefMode,
   PrettyMode(..), defPrettyMode,
   parenList, braceList
@@ -241,46 +240,101 @@ rawName (Ident _ s) = do
 
 -- --------------------------------------------------------------------------
 
-prettyList :: AstPretty ast =>
-  DocM SrcSpan -> DocM SrcSpan -> DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+noInfoPrettyList :: AstPretty ast =>
+  DocM s -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 
-prettyList _ _ _ [] = do
-  p <- getPos
-  return (noInfoSpan $ mkSrcSpan p p , [])
+noInfoPrettyList _ [] = do
+  b <- getPos
+  return (noInfoSpan $ mkSrcSpan b b, [])
 
-prettyList openParen closeParen sep (e:es) = do
-  openSpan <- openParen
-  x <- astPretty e
+noInfoPrettyList sep (e:es) = do
+  e' <- astPretty e
+  begp <- getPos
+  xs <- foldM (\ acc i -> do
+    p <- sep
+    x <- astPretty i
+    return (x:acc))
+    [e']
+    es
+  endp <- getPos
+
+  return (noInfoSpan $ mkSrcSpan begp endp, reverse xs)
+
+-- --------------------------------------------------------------------------
+
+infoPrettyList :: AstPretty ast =>
+  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+
+infoPrettyList _ [] = do
+  b <- getPos
+  return (noInfoSpan $ mkSrcSpan b b, [])
+
+infoPrettyList sep (e:es) = do
+  e' <- astPretty e
+  begp <- getPos
   (ps, xs) <- foldM (\ (ps, xs) i -> do
     p <- sep
     x <- astPretty i
     return (p:ps, x:xs))
-    ([openSpan], [x])
+    ([], [e'])
     es
-  closeSpan <- closeParen
-  let span = SrcSpanInfo (mergeSrcSpan openSpan closeSpan) (reverse $ closeSpan : ps )
-  return $ (span, reverse xs)
+  endp <- getPos
+  let span = SrcSpanInfo (mkSrcSpan begp endp) (reverse ps )
+  return (span, reverse xs)
 
 -- --------------------------------------------------------------------------
 
-listSep :: DocM SrcSpan -> DocM SrcSpan
-listSep sep = do
-  PrettyMode mode <- ask
-  if layout mode == PPOffsideRule || layout mode == PPSemiColon
-    then do
+genericParenList :: AstPretty ast =>
+  DocM SrcSpan -> DocM SrcSpan -> DocM (SrcSpanInfo, [ast SrcSpanInfo]) -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+
+genericParenList openParen closeParen ls = do
+  op <- openParen
+  (s, xs) <- ls
+  cp <- closeParen
+  let ps = (op : (srcInfoPoints s)) ++ [cp]
+  return (SrcSpanInfo (mergeSrcSpan op cp) ps, xs)
+
+-- --------------------------------------------------------------------------
+
+vcat :: DocM ()
+vcat = do
+  DocState (SrcLoc f l c) n <- get
+  let s = if n < c then line else space $ n - c
+  _ <- s
+  return ()
+
+-- --------------------------------------------------------------------------
+
+hsep :: DocM a -> DocM a
+hsep sep = do
+  s <- sep
+  _ <- space 1
+  return s
+
+-- --------------------------------------------------------------------------
+
+fsep :: DocM a -> DocM a
+fsep sep = do
       -- should be like fsep from Text-PrettyPrint-HughesPJ
-      undefined
-    else do
-      span <- sep
-      _ <- space 1
-      return span
+      s <- sep
+      _    <- line
+      return s
 
--- --------------------------------------------------------------------------
+------------------------- pp utils -------------------------
 
 parenList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-parenList = prettyList (format "(") (format ")") (listSep $ format ",")
+parenList xs = genericParenList (format "(") (format ")") (infoPrettyList (layoutChoice fsep hsep $ format ",") xs)
 
 -- --------------------------------------------------------------------------
 
 braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-braceList = prettyList (format "[") (format "]") (listSep $ format ",")
+braceList xs = genericParenList (format "{") (format "}") (infoPrettyList (layoutChoice fsep hsep $ format ",") xs)
+
+-- --------------------------------------------------------------------------
+
+layoutChoice :: (DocM a -> DocM a) -> (DocM a -> DocM a) -> (DocM a -> DocM a)
+layoutChoice a b f = do
+  PrettyMode mode <- ask
+  if layout mode == PPOffsideRule || layout mode == PPSemiColon
+  then a f
+  else b f
