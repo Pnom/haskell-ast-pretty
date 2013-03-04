@@ -79,7 +79,7 @@ space x = do
 nest :: Int -> DocM ()
 nest x = do
   DocState l n <- get
-  put $! DocState l (n + x)
+  put $! DocState l (1 + n + x)
   return ()
 
 -- --------------------------------------------------------------------------
