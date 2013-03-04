@@ -61,7 +61,7 @@ propNestCorrect start@(DocState pos n) ast nst = isDocStateCorrect start && nst 
       (srcSpanStart.srcInfoSpan $ ann ast')
 
 propNestModule :: Monad m => DocState -> String -> Int -> Property m
-propNestModule st name n = propNestCorrect st (ModuleName undefined name) n
+propNestModule st name = propNestCorrect st (ModuleName undefined name)
 
 -- --------------------------------------------------------------------------
 
@@ -76,7 +76,7 @@ propSpaceCorrect start@(DocState pos _) ast s = isDocStateCorrect start && s >= 
     (srcLine pos, s + srcColumn pos) == (srcSpanStart.srcInfoSpan $ ann ast')
 
 propSpaceModule :: Monad m => DocState -> String -> Int -> Property m
-propSpaceModule st name sp = propSpaceCorrect st (ModuleName undefined name) sp
+propSpaceModule st name = propSpaceCorrect st (ModuleName undefined name)
 
 -- --------------------------------------------------------------------------
 
@@ -96,7 +96,7 @@ propModuleName st name = propAstCorrect st $ ModuleName undefined name
 
 -- --------------------------------------------------------------------------
 
-propCName st n = (isAstCorrect n) ==> propAstCorrectAll st [VarName undefined n, ConName undefined n]
+propCName st n = isAstCorrect n ==> propAstCorrectAll st [VarName undefined n, ConName undefined n]
 
 -- --------------------------------------------------------------------------
 

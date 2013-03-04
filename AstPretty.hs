@@ -31,7 +31,7 @@ type DocM = ReaderT PrettyMode (State DocState)
 -- | render the document with a given mode.
 
 renderWithMode :: PrettyMode -> DocState -> DocM a -> a
-renderWithMode mode state doc = fst $ runState (runReaderT doc mode) state
+renderWithMode mode state doc = evalState (runReaderT doc mode) state
 
 -- | render the document with 'defaultMode'.
 renderWithDefMode :: DocState -> DocM a -> a
@@ -42,8 +42,8 @@ renderWithDefMode = renderWithMode defPrettyMode
 format :: String -> DocM SrcSpan
 format s = do
   SrcLoc f l c <- getPos
-  let newColumn = c + (length s)
-  putPos $ (SrcLoc f l newColumn)
+  let newColumn = c + length s
+  putPos $ SrcLoc f l newColumn
   return $ SrcSpan f l c l newColumn
 
 -- --------------------------------------------------------------------------
@@ -195,7 +195,7 @@ rawQName (Qual _ mn n)  = do
   m' <- astPretty mn
   _  <- format "."
   n'  <- rawName n
-  let span  = (ann m') <++> (ann n')
+  let span  = ann m' <++> ann n'
   return $ Qual span m' n'
 
 rawQName (UnQual _ n) = do
@@ -291,7 +291,7 @@ genericParenList openParen closeParen ls = do
   op <- openParen
   (s, xs) <- ls
   cp <- closeParen
-  let ps = (op : (srcInfoPoints s)) ++ [cp]
+  let ps = (op : srcInfoPoints s) ++ [cp]
   return (SrcSpanInfo (mergeSrcSpan op cp) ps, xs)
 
 -- --------------------------------------------------------------------------
@@ -332,7 +332,7 @@ braceList xs = genericParenList (format "{") (format "}") (infoPrettyList (layou
 
 -- --------------------------------------------------------------------------
 
-layoutChoice :: (DocM a -> DocM a) -> (DocM a -> DocM a) -> (DocM a -> DocM a)
+layoutChoice :: (DocM a -> DocM a) -> (DocM a -> DocM a) -> DocM a -> DocM a
 layoutChoice a b f = do
   PrettyMode mode <- ask
   if layout mode == PPOffsideRule || layout mode == PPSemiColon
