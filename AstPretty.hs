@@ -12,7 +12,7 @@ import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
 import Control.Monad.Reader
 
-import qualified Text.PrettyPrint as P
+
 
 import Debug.Trace
 
@@ -21,9 +21,9 @@ data DocState = DocState {
   nestSize :: !Int
   } deriving Show
 
-data PrettyMode = PrettyMode PR.PPHsMode
+data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 
-defPrettyMode = PrettyMode PR.defaultMode
+defPrettyMode = PrettyMode PR.defaultMode PR.style
 
 type DocM = ReaderT PrettyMode (State DocState)
 
@@ -80,6 +80,18 @@ nest x = do
   DocState l n <- get
   put $! DocState l (1 + n + x)
   return ()
+
+-- --------------------------------------------------------------------------
+
+empty :: DocM ()
+empty = return ()
+
+-- --------------------------------------------------------------------------
+
+emptySpan :: DocM SrcSpan
+emptySpan = do
+  sp <- getPos
+  return $ mkSrcSpan sp sp
 
 -- --------------------------------------------------------------------------
 
@@ -382,9 +394,15 @@ hsep :: DocM ()
 hsep = space 1
 
 -- --------------------------------------------------------------------------
-
+-- fsep prototype
 fsep :: DocM ()
-fsep = line
+fsep  = do
+  PrettyMode _ style  <- ask
+  c <- getPos
+  case mode style of
+    PageMode -> do
+      if srcColumn c >= lineLength style then line else empty
+    _ -> undefined
 
 ------------------------- pp utils -------------------------
 
@@ -419,12 +437,19 @@ myFsep _ [] = infoPrettyList undefined []
 myFsep p xs = layoutChoice fsep' hsep'
   where
     hsep' = infoPrettyList (punctuate p hsep) xs
-    fsep' = undefined
+    fsep' = do
+      PrettyMode mode _ <- ask
+      let n = onsideIndent mode
+      let f = do
+          _ <- nest (-n)
+          infoPrettyList (punctuate p fsep) xs
+      _ <- nest n
+      f
 
 -- --------------------------------------------------------------------------
 
 layoutChoice a b  = do
-  PrettyMode mode <- ask
+  PrettyMode mode _ <- ask
   if layout mode == PPOffsideRule || layout mode == PPSemiColon
   then a
   else b
