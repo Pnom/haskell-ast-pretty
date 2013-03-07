@@ -322,20 +322,20 @@ noInfoPrettyList :: AstPretty ast =>
   DocM s -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 
 noInfoPrettyList _ [] = do
-  b <- getPos
-  return (noInfoSpan $ mkSrcSpan b b, [])
+  sp <- getPos
+  return (noInfoSpan $ mkSrcSpan sp sp, [])
 
 noInfoPrettyList sep (e:es) = do
   e' <- astPretty e
-  begp <- getPos
+  sp <- getPos
   xs <- foldM (\ acc i -> do
     p <- sep
     x <- astPretty i
     return (x:acc))
     [e']
     es
-  endp <- getPos
-  return (noInfoSpan $ mkSrcSpan begp endp, reverse xs)
+  ep <- getPos
+  return (noInfoSpan $ mkSrcSpan sp ep, reverse xs)
 
 -- --------------------------------------------------------------------------
 
@@ -348,15 +348,15 @@ infoPrettyList _ [] = do
 
 infoPrettyList sep (e:es) = do
   e' <- astPretty e
-  begp <- getPos
+  sp <- getPos
   (ps, xs) <- foldM (\ (ps, xs) i -> do
     p <- sep
     x <- astPretty i
     return (p:ps, x:xs))
     ([], [e'])
     es
-  endp <- getPos
-  let span = SrcSpanInfo (mkSrcSpan begp endp) (reverse ps )
+  ep <- getPos
+  let span = SrcSpanInfo (mkSrcSpan sp ep) (reverse ps )
   return (span, reverse xs)
 
 -- --------------------------------------------------------------------------
@@ -418,6 +418,25 @@ braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
 
 -- --------------------------------------------------------------------------
 
+mySep :: AstPretty ast =>
+  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+-- mySep prototype
+mySep _ [] = error "Internal error: mySep"
+
+mySep _ [x] = infoPrettyList undefined [x]
+
+mySsep p (x:xs) = do
+  sp <- getPos
+  x' <- astPretty x
+  p' <- p
+  _ <- space 1
+  (ps, xs') <- infoPrettyList (punctuate p fsep) xs
+  ep <- getPos
+
+  let span = SrcSpanInfo (mkSrcSpan sp ep) (p' : srcInfoPoints ps)
+  return (span, x' : xs')
+
+-- --------------------------------------------------------------------------
 myVcat = layoutChoice vcat hsep
 
 -- --------------------------------------------------------------------------
