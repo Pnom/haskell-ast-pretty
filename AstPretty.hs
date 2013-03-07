@@ -12,9 +12,7 @@ import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
 import Control.Monad.Reader
 
-
-
-import Debug.Trace
+import Data.Maybe
 
 data DocState = DocState {
   pos :: !SrcLoc,
@@ -98,12 +96,102 @@ emptySpan = do
 class AstPretty ast where
   astPretty :: ast a -> DocM (ast SrcSpanInfo)
 
+---------------------------------------------------------------------
+-- Annotated version
+
+-------------------------  Pretty-Print a Module --------------------
+
+instance AstPretty Module where
+  astPretty (Module pos mbHead os imp decls) = do
+    _ <- markLine
+    undefined
+--------------------------  Module Header ------------------------------
+
+instance AstPretty ModuleHead where
+  astPretty (ModuleHead _ m mbWarn mbExportList) = do
+    -- mySep
+    sp <- format "module"
+    _  <- space 1
+    m' <- astPretty m
+    _  <- fsep
+    w' <- maybePP mbWarn
+    _  <- fsep
+    el <- maybePP mbExportList
+    _  <- fsep
+    cp <- format "where"
+    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
+    return $ ModuleHead span m' w' el
+
+-- --------------------------------------------------------------------------
+
+instance AstPretty WarningText where
+    astPretty w = case w of
+      (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
+      (WarnText _ s) -> impl WarnText "{-# WARNING"    s
+      where
+        -- mySep
+        impl f c s = do
+          sp <- format c
+          _ <- space 1
+          _ <- format s
+          _ <- fsep
+          cp <- format "#-}"
+          let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
+          return $ DeprText span s
+
 -- --------------------------------------------------------------------------
 
 instance AstPretty ModuleName where
-  astPretty (ModuleName l s) = do
+  astPretty (ModuleName _ s) = do
     span <- format s
     return $ ModuleName (noInfoSpan span) s
+
+-- --------------------------------------------------------------------------
+
+instance AstPretty ExportSpecList where
+  astPretty (ExportSpecList _ especs)  = do
+    (span, es) <- parenList especs
+    return $ ExportSpecList span es
+
+-- --------------------------------------------------------------------------
+
+instance AstPretty ExportSpec where
+
+  astPretty (EVar _ name) = do
+    qn <- astPretty name
+    return $ EVar (noInfoSpan.srcInfoSpan $ ann qn) qn
+
+  astPretty (EAbs _ name) = do
+    qn <- astPretty name
+    return $ EAbs (noInfoSpan.srcInfoSpan $ ann qn) qn
+
+  astPretty (EThingAll _ name) = do
+    qn <- astPretty name
+    undefined -- what about "(..)"?
+    return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
+
+  astPretty (EThingWith l name nameList) = do
+    n <- astPretty name
+    (p, ns) <- parenList nameList
+    let sp = ( ann n <++> p) <** srcInfoPoints p
+    return $ EThingWith sp n ns
+
+  astPretty (EModuleContents _ m) = do
+          qn <- astPretty m
+          return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
+
+-- --------------------------------------------------------------------------
+
+instance AstPretty ImportDecl where
+  astPretty (ImportDecl _ mod qual src pkg asMod specs)= do
+    -- mySep
+    _ <- markLine
+    sp <- format "import"
+    _  <- space 1
+    src'  <- if src  then format "{-# SOURCE #-}" else emptySpan
+    qual' <- if qual then format "qualified"      else emptySpan
+    m' <- astPretty mod
+    undefined
 
 ------------------------- Pragmas ---------------------------------------
 
@@ -219,32 +307,6 @@ instance AstPretty SpecialCon where
 
 -- --------------------------------------------------------------------------
 
-instance AstPretty ExportSpec where
-
-  astPretty (EVar _ name) = do
-    qn <- astPretty name
-    return $ EVar (noInfoSpan.srcInfoSpan $ ann qn) qn
-
-  astPretty (EAbs _ name) = do
-    qn <- astPretty name
-    return $ EAbs (noInfoSpan.srcInfoSpan $ ann qn) qn
-
-  astPretty (EThingAll _ name) = do
-    qn <- astPretty name
-    undefined -- what about "(..)"?
-    return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
-
-  astPretty (EThingWith l name nameList) = do
-    n <- astPretty name
-    (p, ns) <- parenList nameList
-    let sp = ( ann n <++> p) <** srcInfoPoints p
-    return $ EThingWith sp n ns
-
-  astPretty (EModuleContents _ m) = do
-          qn <- astPretty m
-          return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
-
--- --------------------------------------------------------------------------
 
 instance AstPretty QName where
   astPretty qn
@@ -406,6 +468,14 @@ fsep  = do
 
 ------------------------- pp utils -------------------------
 
+maybePP :: AstPretty ast => Maybe (ast a) -> DocM (Maybe (ast SrcSpanInfo))
+maybePP Nothing = return Nothing
+maybePP (Just a) = do
+  a' <- astPretty a
+  return $ Just a'
+
+-- --------------------------------------------------------------------------
+
 parenList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 parenList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
   genericParenList (format "(") (format ")") $ infoPrettyList sep xs
@@ -421,6 +491,7 @@ braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
 mySep :: AstPretty ast =>
   DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 -- mySep prototype
+
 mySep _ [] = error "Internal error: mySep"
 
 mySep _ [x] = infoPrettyList undefined [x]
@@ -437,6 +508,7 @@ mySsep p (x:xs) = do
   return (span, x' : xs')
 
 -- --------------------------------------------------------------------------
+
 myVcat = layoutChoice vcat hsep
 
 -- --------------------------------------------------------------------------
@@ -445,6 +517,7 @@ myFsepSimple = layoutChoice fsep hsep
 
 -- --------------------------------------------------------------------------
 -- myFsep prototype
+
 
 -- same, except that continuation lines are indented,
 -- which is necessary to avoid triggering the offside rule.
@@ -472,3 +545,14 @@ layoutChoice a b  = do
   if layout mode == PPOffsideRule || layout mode == PPSemiColon
   then a
   else b
+
+-- --------------------------------------------------------------------------
+-- Prefix something with a LINE pragma, if requested.
+-- GHC's LINE pragma actually sets the current line number to n-1, so
+-- that the following line is line n.  But if there's no newline before
+-- the line we're talking about, we need to compensate by adding 1.
+
+markLine :: DocM ()
+markLine = return () -- not implemented yet
+
+
