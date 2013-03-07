@@ -97,14 +97,17 @@ instance AstPretty ModuleName where
 
 instance AstPretty ModulePragma where
   astPretty (LanguagePragma _ []) = do
-    b <- getPos
-    return $ LanguagePragma (noInfoSpan $ mkSrcSpan b b) []
+    -- myFsep
+    sp <- getPos
+    return $ LanguagePragma (noInfoSpan $ mkSrcSpan sp sp) []
 
   astPretty (LanguagePragma _ ns) = do
-    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") (infoPrettyList (myFsep $ format ",") ns)
+    -- myFsep
+    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") (myFsep (format ",") ns)
     return $ LanguagePragma span ls
 
   astPretty (OptionsPragma _ mbTool s) = do
+    -- myFsep
     let
       t = case mbTool of
         Nothing -> ""
@@ -118,6 +121,7 @@ instance AstPretty ModulePragma where
     return $ OptionsPragma span mbTool s
 
   astPretty (AnnModulePragma _ ann) = do
+    -- myFsep
     sp <- format "{-# ANN"
     ann'  <- astPretty ann
     cp <- format "#-}"
@@ -128,6 +132,7 @@ instance AstPretty ModulePragma where
 
 instance AstPretty Annotation where
   astPretty (Ann _ n e) = do
+    -- myFsep
     sp <- getPos
     n' <- astPretty n
     e' <- astPretty e
@@ -136,6 +141,7 @@ instance AstPretty Annotation where
     return $ Ann span n' e'
 
   astPretty (TypeAnn _ n e) = do
+    -- myFsep
     sp <- getPos
     t <- format "type"
     n' <- astPretty n
@@ -145,6 +151,7 @@ instance AstPretty Annotation where
     return $ TypeAnn span n' e'
 
   astPretty (ModuleAnn _ e) = do
+    -- myFsep
     sp <- getPos
     t <- format "module"
     e' <- astPretty e
@@ -342,6 +349,14 @@ infoPrettyList sep (e:es) = do
 
 -- --------------------------------------------------------------------------
 
+punctuate :: DocM SrcSpan -> DocM () -> DocM SrcSpan
+punctuate p sep = do
+  p' <- p
+  _  <- sep
+  return p'
+
+-- --------------------------------------------------------------------------
+
 genericParenList :: AstPretty ast =>
   DocM SrcSpan -> DocM SrcSpan -> DocM (SrcSpanInfo, [ast SrcSpanInfo]) -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 
@@ -363,49 +378,53 @@ vcat = do
 
 -- --------------------------------------------------------------------------
 
-hsep :: DocM a -> DocM a
-hsep sep = do
-  s <- sep
-  _ <- space 1
-  return s
+hsep :: DocM ()
+hsep = space 1
 
 -- --------------------------------------------------------------------------
 
-fsep :: DocM a -> DocM a
-fsep sep = do
-  -- should be like fsep from Text-PrettyPrint-HughesPJ
-  s <- sep
-  _ <- line
-  return s
+fsep :: DocM ()
+fsep = line
 
 ------------------------- pp utils -------------------------
 
 parenList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-parenList xs = genericParenList (format "(") (format ")") (infoPrettyList (layoutChoice fsep hsep $ format ",") xs)
+parenList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
+  genericParenList (format "(") (format ")") $ infoPrettyList sep xs
 
 -- --------------------------------------------------------------------------
 
 braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-braceList xs = genericParenList (format "{") (format "}") (infoPrettyList (layoutChoice fsep hsep $ format ",") xs)
+braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
+  genericParenList (format "{") (format "}") $ infoPrettyList sep xs
+
+-- --------------------------------------------------------------------------
+
+myVcat = layoutChoice vcat hsep
 
 -- --------------------------------------------------------------------------
 
 myFsepSimple = layoutChoice fsep hsep
 
 -- --------------------------------------------------------------------------
+-- myFsep prototype
 
-myFsep = layoutChoice fsep' hsep
+-- same, except that continuation lines are indented,
+-- which is necessary to avoid triggering the offside rule.
+myFsep :: AstPretty ast =>
+  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+
+myFsep _ [] = infoPrettyList undefined []
+
+myFsep p xs = layoutChoice fsep' hsep'
   where
-    fsep' dl = do
-      PrettyMode mode <- ask
-      let n = onsideIndent mode
-      nest n >> fsep ( nest (-n) >> dl)
+    hsep' = infoPrettyList (punctuate p hsep) xs
+    fsep' = undefined
 
 -- --------------------------------------------------------------------------
 
-layoutChoice :: (DocM a -> DocM a) -> (DocM a -> DocM a) -> DocM a -> DocM a
-layoutChoice a b f = do
+layoutChoice a b  = do
   PrettyMode mode <- ask
   if layout mode == PPOffsideRule || layout mode == PPSemiColon
-  then a f
-  else b f
+  then a
+  else b
