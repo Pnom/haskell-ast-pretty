@@ -158,7 +158,6 @@ instance AstPretty Exp where
   astPretty = undefined
 
 -- --------------------------------------------------------------------------
---  CName instance
 
 instance AstPretty  CName where
 
@@ -171,7 +170,6 @@ instance AstPretty  CName where
     return $ ConName (noInfoSpan.srcInfoSpan $ ann n) n
 
 -- --------------------------------------------------------------------------
--- SpecialCon instance
 
 instance AstPretty SpecialCon where
 
@@ -201,7 +199,6 @@ instance AstPretty SpecialCon where
     return $ UnboxedSingleCon (noInfoSpan  span)
 
 -- --------------------------------------------------------------------------
--- ExportSpec instance
 
 instance AstPretty ExportSpec where
 
@@ -229,7 +226,6 @@ instance AstPretty ExportSpec where
           return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
 
 -- --------------------------------------------------------------------------
--- QName instance
 
 instance AstPretty QName where
   astPretty qn
@@ -271,7 +267,6 @@ rawQName (Special _ sc) = do
   return $ Special (noInfoSpan.srcInfoSpan $ ann val) val
 
 -- --------------------------------------------------------------------------
--- Name instance
 
 instance AstPretty Name where
   astPretty n@(Ident _ _) = rawName n
