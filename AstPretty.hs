@@ -203,7 +203,7 @@ instance AstPretty ModulePragma where
 
   astPretty (LanguagePragma _ ns) = do
     -- myFsep
-    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") (myFsep (format ",") ns)
+    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") $ infoPrettyList (punctuate (format ",") myFsep) ns
     return $ LanguagePragma span ls
 
   astPretty (OptionsPragma _ mbTool s) = do
@@ -388,8 +388,8 @@ noInfoPrettyList _ [] = do
   return (noInfoSpan $ mkSrcSpan sp sp, [])
 
 noInfoPrettyList sep (e:es) = do
-  e' <- astPretty e
   sp <- getPos
+  e' <- astPretty e
   xs <- foldM (\ acc i -> do
     p <- sep
     x <- astPretty i
@@ -409,8 +409,8 @@ infoPrettyList _ [] = do
   return (noInfoSpan $ mkSrcSpan b b, [])
 
 infoPrettyList sep (e:es) = do
-  e' <- astPretty e
   sp <- getPos
+  e' <- astPretty e
   (ps, xs) <- foldM (\ (ps, xs) i -> do
     p <- sep
     x <- astPretty i
@@ -462,7 +462,7 @@ fsep  = do
   PrettyMode _ style  <- ask
   c <- getPos
   case mode style of
-    PageMode -> do
+    PageMode ->
       if srcColumn c >= lineLength style then line else empty
     _ -> undefined
 
@@ -521,22 +521,17 @@ myFsepSimple = layoutChoice fsep hsep
 
 -- same, except that continuation lines are indented,
 -- which is necessary to avoid triggering the offside rule.
-myFsep :: AstPretty ast =>
-  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 
-myFsep _ [] = infoPrettyList undefined []
-
-myFsep p xs = layoutChoice fsep' hsep'
+myFsep  = layoutChoice fsep' hsep
   where
-    hsep' = infoPrettyList (punctuate p hsep) xs
     fsep' = do
-      PrettyMode mode _ <- ask
-      let n = onsideIndent mode
-      let f = do
-          _ <- nest (-n)
-          infoPrettyList (punctuate p fsep) xs
-      _ <- nest n
-      f
+      PrettyMode m style  <- ask
+      let n = onsideIndent m
+      c <- getPos
+      case mode style of
+        PageMode ->
+          if srcColumn c >= lineLength style - n then line else empty
+        _ -> undefined
 
 -- --------------------------------------------------------------------------
 
