@@ -103,8 +103,22 @@ class AstPretty ast where
 
 instance AstPretty Module where
   astPretty (Module pos mbHead os imp decls) = do
+    -- myVcat
+    sp <- getPos
     _ <- markLine
-    undefined
+    (_, os') <- noInfoPrettyList myVcat os
+    h'  <- maybePP mbHead
+    (_, imp') <- fn mbHead imp
+    (_, decls') <- fn mbHead decls
+    ep <- getPos
+    let span = SrcSpanInfo (mkSrcSpan sp ep) []
+    return $ Module span h' os' imp' decls'
+    where
+      fn :: AstPretty ast => Maybe b -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+      fn b = if isJust b then topLevel else noInfoPrettyList empty
+  astPretty (XmlPage pos _mn os n attrs mattr cs) = undefined
+  astPretty (XmlHybrid pos mbHead os imp decls n attrs mattr cs) = undefined
+
 --------------------------  Module Header ------------------------------
 
 instance AstPretty ModuleHead where
@@ -192,6 +206,10 @@ instance AstPretty ImportDecl where
     qual' <- if qual then format "qualified"      else emptySpan
     m' <- astPretty mod
     undefined
+
+-------------------------  Declarations ------------------------------
+
+instance AstPretty Decl where astPretty = undefined
 
 ------------------------- Pragmas ---------------------------------------
 
@@ -485,6 +503,24 @@ parenList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
 braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
   genericParenList (format "{") (format "}") $ infoPrettyList sep xs
+
+-- --------------------------------------------------------------------------
+topLevel :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
+topLevel dl = do
+  PrettyMode mode _ <- ask
+  case layout mode of
+    PPOffsideRule -> do
+      _ <- vcat
+      noInfoPrettyList vcat dl
+    PPSemiColon -> do
+      _ <- vcat
+      undefined -- prettyBlock dl
+    PPInLine -> do
+      _ <- vcat
+      undefined -- prettyBlock dl
+    PPNoLayout -> do
+      _ <- space 1
+      undefined -- flatBlock dl
 
 -- --------------------------------------------------------------------------
 
