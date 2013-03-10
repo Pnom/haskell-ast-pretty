@@ -49,6 +49,8 @@ format s = do
 getPos :: DocM SrcLoc
 getPos = gets pos
 
+-- --------------------------------------------------------------------------
+
 putPos :: SrcLoc -> DocM SrcLoc
 putPos l = do
   DocState _ n <- get
@@ -86,10 +88,63 @@ empty = return ()
 
 -- --------------------------------------------------------------------------
 
+val :: a -> DocM a
+val a = return a
+
+-- --------------------------------------------------------------------------
+
 emptySpan :: DocM SrcSpan
 emptySpan = do
   sp <- getPos
   return $ mkSrcSpan sp sp
+
+-- --------------------------------------------------------------------------
+
+updateSrcSpan (SrcSpanInfo (SrcSpan f sl sc _ _) ps) (SrcLoc _ el ec) p =
+  SrcSpanInfo (SrcSpan f sl sc el ec) (ps ++ p)
+
+-- --------------------------------------------------------------------------
+
+ast :: DocM (a -> b, SrcSpanInfo) -> DocM a -> DocM (b, SrcSpanInfo)
+ast f a = do
+  sa <- getPos
+  a' <- a
+  ea <- getPos
+  f' <- f
+  ep <- getPos
+  return (fst f' a', updateSrcSpan (snd f') ep [mkSrcSpan sa ea])
+
+-- --------------------------------------------------------------------------
+
+separate :: DocM (a, SrcSpanInfo) -> DocM p -> DocM (a, SrcSpanInfo)
+separate f s = do
+  _ <- s
+  f' <- f
+  ep <- getPos
+  return (fst f', updateSrcSpan (snd f') ep [])
+
+-- --------------------------------------------------------------------------
+
+point :: DocM (a, SrcSpanInfo) -> DocM SrcSpan -> DocM (a, SrcSpanInfo)
+point f p = do
+  p' <- p
+  f' <- f
+  ep <- getPos
+  return (fst f', updateSrcSpan (snd f') ep [p'])
+
+-- --------------------------------------------------------------------------
+
+startPretty :: (a -> b) -> DocM (b, SrcSpanInfo)
+startPretty f = do
+  sp <- emptySpan
+  return (f undefined, SrcSpanInfo sp [])
+
+-- --------------------------------------------------------------------------
+
+resultPretty :: Annotated ast => DocM (ast SrcSpanInfo, SrcSpanInfo) -> DocM (ast SrcSpanInfo)
+resultPretty res = do
+  (m, span) <- res
+  return $ amap (const span) m
 
 -- --------------------------------------------------------------------------
 
@@ -135,6 +190,19 @@ instance AstPretty ModuleHead where
     cp <- format "where"
     let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
     return $ ModuleHead span m' w' el
+{-
+ -- mySep
+  astPretty (ModuleHead _ m mbWarn mbExportList) =
+    resultPretty $ startPretty ModuleHead
+      `point` format "module"
+      `separate` space 1
+      `ast` astPretty m
+      `separate` fsep
+      `ast` maybePP mbWarn
+      `ast` maybePP mbExportList
+      `separate` fsep
+      `point` format "where"
+-}
 
 -- --------------------------------------------------------------------------
 
@@ -152,6 +220,9 @@ instance AstPretty WarningText where
           cp <- format "#-}"
           let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
           return $ f span s
+{-
+          impl f c s = resultPretty $ startPretty f `separate` space 1 `ast` val s `separate` fsep `point` format "#}"
+-}
 
 -- --------------------------------------------------------------------------
 
