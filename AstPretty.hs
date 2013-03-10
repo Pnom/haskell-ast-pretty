@@ -496,7 +496,7 @@ mySep _ [] = error "Internal error: mySep"
 
 mySep _ [x] = infoPrettyList undefined [x]
 
-mySsep p (x:xs) = do
+mySep p (x:xs) = do
   sp <- getPos
   x' <- astPretty x
   p' <- p
