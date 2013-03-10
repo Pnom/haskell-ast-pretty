@@ -576,6 +576,26 @@ braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
   genericParenList (format "{") (format "}") $ infoPrettyList sep xs
 
 -- --------------------------------------------------------------------------
+
+-- Wrap in braces and semicolons, with an extra space at the start in
+-- case the first doc begins with "-", which would be scanned as {-
+flatBlock xs =
+  let
+    sep = punctuate (format ";") hsep
+    ob = punctuate (format "{") (space 1)
+    cb = format "}" in
+  genericParenList ob cb $ infoPrettyList sep xs
+
+-- Same, but put each thing on a separate line
+prettyBlock xs =
+  let
+    sep = punctuate (format ";") vcat
+    ob = punctuate (format "{") (space 1)
+    cb = format "}" in
+  genericParenList ob cb $ infoPrettyList sep xs
+
+-- --------------------------------------------------------------------------
+
 topLevel :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
 topLevel dl = do
   PrettyMode mode _ <- ask
@@ -585,13 +605,13 @@ topLevel dl = do
       noInfoPrettyList vcat dl
     PPSemiColon -> do
       _ <- vcat
-      undefined -- prettyBlock dl
+      prettyBlock dl
     PPInLine -> do
       _ <- vcat
-      undefined -- prettyBlock dl
+      prettyBlock dl
     PPNoLayout -> do
       _ <- space 1
-      undefined -- flatBlock dl
+      flatBlock dl
 
 -- --------------------------------------------------------------------------
 
