@@ -137,7 +137,7 @@ instance AstPretty WarningText where
           _ <- fsep
           cp <- format "#-}"
           let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
-          return $ DeprText span s
+          return $ f span s
 
 -- --------------------------------------------------------------------------
 
@@ -516,12 +516,9 @@ myVcat = layoutChoice vcat hsep
 myFsepSimple = layoutChoice fsep hsep
 
 -- --------------------------------------------------------------------------
--- myFsep prototype
-
-
 -- same, except that continuation lines are indented,
 -- which is necessary to avoid triggering the offside rule.
-
+-- myFsep prototype
 myFsep  = layoutChoice fsep' hsep
   where
     fsep' = do
