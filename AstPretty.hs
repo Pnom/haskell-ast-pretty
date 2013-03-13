@@ -218,7 +218,7 @@ instance AstPretty Module where
       where
         impl _ os h i d = Module undefined h os i d
         vcatList dl = list (sepPoint myVcat) dl
-        prettyLs dl = vcatList dl -- need to add topLevel
+        prettyLs dl = (if isJust mbHead then topLevel else vcatList) dl
   astPretty (XmlPage pos _mn os n attrs mattr cs) = undefined
   astPretty (XmlHybrid pos mbHead os imp decls n attrs mattr cs) = undefined
 
@@ -273,9 +273,8 @@ instance AstPretty ModuleName where
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpecList where
-  astPretty (ExportSpecList _ especs)  = do
-    (span, es) <- parenList especs
-    return $ ExportSpecList span es
+  astPretty (ExportSpecList _ especs) =
+    resultPretty $ startPretty ExportSpecList <\/> parenList especs
 
 -- --------------------------------------------------------------------------
 
@@ -294,11 +293,11 @@ instance AstPretty ExportSpec where
     undefined -- what about "(..)"?
     return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
 
-  astPretty (EThingWith l name nameList) = do
-    n <- astPretty name
-    (p, ns) <- parenList nameList
-    let sp = ( ann n <++> p) <** srcInfoPoints p
-    return $ EThingWith sp n ns
+  astPretty (EThingWith _ name nameList) =
+    resultPretty $ startPretty EThingWith
+      <\/> ast name
+      <\/> parenList nameList
+
 
   astPretty (EModuleContents _ m) = do
           qn <- astPretty m
@@ -604,53 +603,43 @@ maybePP (Just a) = do
 
 -- --------------------------------------------------------------------------
 
-parenList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-parenList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
-  genericParenList (format "(") (format ")") $ infoPrettyList sep xs
+parenList xs = infoPoint "(" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint ")"
 
--- --------------------------------------------------------------------------
+hashParenList xs = infoPoint "(#" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint "#)"
 
-braceList :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-braceList xs = let sep = punctuate (format ",") (layoutChoice fsep hsep) in
-  genericParenList (format "{") (format "}") $ infoPrettyList sep xs
+braceList xs = infoPoint "{" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint "}"
+
+bracketList xs = infoPoint "[" <> list (sepPoint myFsepSimple) xs <> infoPoint "]"
 
 -- --------------------------------------------------------------------------
 
 -- Wrap in braces and semicolons, with an extra space at the start in
 -- case the first doc begins with "-", which would be scanned as {-
-flatBlock xs =
-  let
-    sep = punctuate (format ";") hsep
-    ob = punctuate (format "{") (space 1)
-    cb = format "}" in
-  genericParenList ob cb $ infoPrettyList sep xs
+
+flatBlock :: (Annotated ast, AstPretty ast) => [ast a] -> AstElement [ast SrcSpanInfo]
+flatBlock xs = infoPoint "{" <> sepPoint hsep <> list (infoPoint ";" <> sepPoint hsep) xs <> infoPoint "}"
 
 -- Same, but put each thing on a separate line
-prettyBlock xs =
-  let
-    sep = punctuate (format ";") vcat
-    ob = punctuate (format "{") (space 1)
-    cb = format "}" in
-  genericParenList ob cb $ infoPrettyList sep xs
+prettyBlock :: (Annotated ast, AstPretty ast) => [ast a] -> AstElement [ast SrcSpanInfo]
+prettyBlock xs = infoPoint "{" <> sepPoint hsep <> list (infoPoint ";" <> sepPoint vcat) xs <> infoPoint "}"
 
 -- --------------------------------------------------------------------------
 
-topLevel :: AstPretty ast => [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-topLevel dl = do
+topLevel dl = Ast $ do
   PrettyMode mode _ <- ask
   case layout mode of
     PPOffsideRule -> do
-      _ <- vcat
-      noInfoPrettyList vcat dl
+      let Ast x = sepPoint vcat <> list (sepPoint myVcat) dl
+      x
     PPSemiColon -> do
-      _ <- vcat
-      prettyBlock dl
+      let Ast x = sepPoint vcat <> prettyBlock dl
+      x
     PPInLine -> do
-      _ <- vcat
-      prettyBlock dl
+      let Ast x = sepPoint vcat <> prettyBlock dl
+      x
     PPNoLayout -> do
-      _ <- space 1
-      flatBlock dl
+      let Ast x = sepPoint hsep <> flatBlock dl
+      x
 
 -- --------------------------------------------------------------------------
 
