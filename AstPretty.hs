@@ -150,6 +150,13 @@ infoPoint s = InfoPoint $ do
   p <- format s
   return [p]
 
+may :: (a -> AstElement b) -> Maybe a -> AstElement (Maybe b)
+may f (Just a) = Ast $ do
+  let Ast f' = f a
+  (a', p) <- f'
+  return (Just a', p)
+may _ Nothing = Ast $ return (Nothing, [])
+
 -- --------------------------------------------------------------------------
 
 startPretty :: (a -> b) -> AstElement b
