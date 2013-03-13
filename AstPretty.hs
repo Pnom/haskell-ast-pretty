@@ -263,10 +263,8 @@ instance AstPretty ExportSpec where
 
   astPretty (EAbs _ name) = resultPretty $ startPretty EAbs <\/> astInfoPoint name
 
-  astPretty (EThingAll _ name) = do
-    qn <- astPretty name
-    undefined -- what about "(..)"?
-    return $ EThingAll (noInfoSpan.srcInfoSpan $ ann qn) qn
+  astPretty (EThingAll _ name) =
+    resultPretty $ startPretty EThingAll <\/> ast name <> infoPoint "(..)"
 
   astPretty (EThingWith _ name nameList) =
     resultPretty $ startPretty EThingWith
@@ -298,10 +296,20 @@ instance AstPretty ImportDecl where
     where impl l s q p m n sp = ImportDecl undefined m q s p n sp
 
 instance AstPretty ImportSpecList where
-  astPretty = undefined
+  astPretty (ImportSpecList _ b ispecs) =
+    resultPretty $ startPretty ImportSpecList
+      <\/> raw (if b then "hiding" else "") b
+      <>   sepPoint hsep
+      <\/> parenList ispecs
 
 instance AstPretty ImportSpec where
-  astPretty = undefined
+  astPretty (IVar _ name)                = resultPretty $ startPretty IVar <\/> ast name
+  astPretty (IAbs _ name)                = resultPretty $ startPretty IAbs <\/> ast name
+  astPretty (IThingAll _ name)           =
+    resultPretty $ startPretty IThingAll <\/> ast name <> infoPoint "(..)"
+  astPretty (IThingWith _ name nameList) =
+    resultPretty $ startPretty IThingWith <\/> ast name <\/> parenList nameList
+
 
 -------------------------  Declarations ------------------------------
 
@@ -370,10 +378,35 @@ instance AstPretty Annotation where
       <> sepPoint myFsep
       <\/> astInfoPoint e
 
+------------------------- Data & Newtype Bodies -------------------------
+instance AstPretty QualConDecl where astPretty = undefined
+
+instance AstPretty GadtDecl where astPretty = undefined
+
+instance AstPretty ConDecl where astPretty = undefined
+
+instance AstPretty FieldDecl where astPretty = undefined
+
+instance AstPretty BangType where astPretty = undefined
+
+instance AstPretty Deriving where astPretty = undefined
+
+------------------------- Types -------------------------
+instance AstPretty Type where astPretty = undefined
+
+instance AstPretty TyVarBind where astPretty = undefined
+
+
+---------------------------- Kinds ----------------------------
+
+instance AstPretty Kind where astPretty = undefined
+
+------------------- Functional Dependencies -------------------
+instance AstPretty FunDep where astPretty = undefined
+
 ------------------------- Expressions -------------------------
 
-instance AstPretty Exp where
-  astPretty = undefined
+instance AstPretty Exp where astPretty = undefined
 
 -- --------------------------------------------------------------------------
 
