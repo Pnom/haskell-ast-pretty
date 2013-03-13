@@ -146,6 +146,7 @@ astArr a = Ast $ do
   return ([a'], [])
 
 raw :: String -> a -> AstElement a
+raw "" a = Ast $ return (a, [])
 raw s a = Ast $ do
   s' <- format s
   return (a, [s'])
@@ -531,6 +532,15 @@ prettyBlock :: (Annotated ast, AstPretty ast) => [ast a] -> AstElement [ast SrcS
 prettyBlock xs = infoPoint "{" <> sepPoint hsep <> list (infoPoint ";" <> sepPoint vcat) xs <> infoPoint "}"
 
 -- --------------------------------------------------------------------------
+
+blankline = InfoPoint $ do
+  PrettyMode mode _ <- ask
+  let InfoPoint x = if spacing mode && layout mode /= PPNoLayout
+      then
+        sepPoint hsep <> sepPoint vcat
+      else
+        sepPoint empty
+  x
 
 topLevel dl = Ast $ do
   PrettyMode mode _ <- ask
