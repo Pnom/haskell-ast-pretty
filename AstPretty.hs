@@ -314,7 +314,23 @@ instance AstPretty ImportSpec where
 
 -------------------------  Declarations ------------------------------
 
-instance AstPretty Decl where astPretty = undefined
+instance AstPretty Decl where
+  astPretty (TypeDecl _ head htype) =
+    resultPretty $ startPretty TypeDecl
+      <> blankline
+      -- markLine
+      -- mySep
+      <> infoPoint "type"
+      <> sepPoint hsep
+      <\/> ast head
+      <> sepPoint fsep
+      <> infoPoint "="
+      <> sepPoint fsep
+      <\/> ast htype
+
+  astPretty _ = undefined
+
+instance AstPretty DeclHead where astPretty = undefined
 
 ------------------------- Pragmas ---------------------------------------
 
