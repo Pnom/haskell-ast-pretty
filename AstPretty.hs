@@ -13,6 +13,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 
 import Data.Maybe
+import Data.List
 
 data DocState = DocState {
   pos :: !SrcLoc,
@@ -118,6 +119,22 @@ InfoPoint l <> InfoPoint r = InfoPoint $ do
   (f', ps) <- f
   return (f' a', ps ++ p)
 
+
+(|++|) :: AstElement [a] -> AstElement [a] -> AstElement [a]
+Ast l |++| Ast r = Ast $ do
+-- what if l and r are lists
+  (l', ls) <- l
+  (r', rs) <- r
+  return (l' ++ r', ls ++ rs)
+
+(|+|) :: AstElement a -> AstElement [a] -> AstElement [a]
+Ast l |+| Ast r = Ast $ do
+-- what if l and r are lists
+  (l', ls) <- l
+  (r', rs) <- r
+  return (l':r', ls ++ rs)
+
+
 -- --------------------------------------------------------------------------
 
 ast :: (Annotated ast, AstPretty ast) => ast a -> AstElement (ast SrcSpanInfo)
@@ -159,6 +176,12 @@ may _ Nothing = Ast $ return (Nothing, [])
 
 -- --------------------------------------------------------------------------
 
+list:: (Annotated ast, AstPretty ast) => AstElement [ast SrcSpanInfo] -> [ast a] -> AstElement [ast SrcSpanInfo]
+list  _ [] = Ast $ return ([], [])
+list sep es = let (e:es') = reverse es in foldl' (\ ac i -> (ast i) |+| (sep <> ac) ) (astArr e) es'
+
+-- --------------------------------------------------------------------------
+
 startPretty :: (a -> b) -> AstElement b
 startPretty f = Ast $ return (f undefined, [])
 
@@ -183,20 +206,19 @@ class AstPretty ast where
 -------------------------  Pretty-Print a Module --------------------
 
 instance AstPretty Module where
-  astPretty (Module pos mbHead os imp decls) = do
-    -- myVcat
-    sp <- getPos
-    _ <- markLine
-    (_, os') <- noInfoPrettyList myVcat os
-    h'  <- maybePP mbHead
-    (_, imp') <- fn mbHead imp
-    (_, decls') <- fn mbHead decls
-    ep <- getPos
-    let span = SrcSpanInfo (mkSrcSpan sp ep) []
-    return $ Module span h' os' imp' decls'
-    where
-      fn :: AstPretty ast => Maybe b -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-      fn b = if isJust b then topLevel else noInfoPrettyList empty
+  astPretty (Module _ mbHead os imp decls) =
+    resultPretty $ startPretty impl
+      <\/> vcatList os
+      <> sepPoint myVcat
+      <\/> may ast mbHead
+      <> sepPoint myVcat
+      <\/> prettyLs imp
+      <> sepPoint myVcat
+      <\/> prettyLs decls
+      where
+        impl _ os h i d = Module undefined h os i d
+        vcatList dl = list (sepPoint myVcat) dl
+        prettyLs dl = vcatList dl -- need to add topLevel
   astPretty (XmlPage pos _mn os n attrs mattr cs) = undefined
   astPretty (XmlHybrid pos mbHead os imp decls n attrs mattr cs) = undefined
 
