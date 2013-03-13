@@ -89,13 +89,6 @@ empty = return ()
 
 -- --------------------------------------------------------------------------
 
-emptySpan :: DocM SrcSpan
-emptySpan = do
-  sp <- getPos
-  return $ mkSrcSpan sp sp
-
--- --------------------------------------------------------------------------
-
 data AstElement a = Ast (DocM (a, [SrcSpan]))
   | InfoPoint (DocM [SrcSpan])
 
@@ -152,10 +145,13 @@ astArr a = Ast $ do
   a' <- astPretty a
   return ([a'], [])
 
-raw :: String -> AstElement String
-raw s = Ast $ do
+raw :: String -> a -> AstElement a
+raw s a = Ast $ do
   s' <- format s
-  return (s, [s'])
+  return (a, [s'])
+
+rawS :: String -> AstElement String
+rawS s = raw s s
 
 sepPoint :: DocM a -> AstElement b
 sepPoint p = InfoPoint $ do
@@ -225,50 +221,33 @@ instance AstPretty Module where
 --------------------------  Module Header ------------------------------
 
 instance AstPretty ModuleHead where
-  astPretty (ModuleHead _ m mbWarn mbExportList) = do
-    -- mySep
-    sp <- format "module"
-    _  <- space 1
-    m' <- astPretty m
-    _  <- fsep
-    w' <- maybePP mbWarn
-    _  <- fsep
-    el <- maybePP mbExportList
-    _  <- fsep
-    cp <- format "where"
-    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
-    return $ ModuleHead span m' w' el
-{-
  -- mySep
   astPretty (ModuleHead _ m mbWarn mbExportList) =
-    resultPretty $ startPretty ModuleHead
-      `point` format "module"
-      `separate` space 1
-      `ast` astPretty m
-      `separate` fsep
-      `ast` maybePP mbWarn
-      `ast` maybePP mbExportList
-      `separate` fsep
-      `point` format "where"
--}
+    resultPretty $ startPretty ModuleHead <> infoPoint "module"
+        <> sepPoint hsep
+        <\/> ast m
+        <> sepPoint fsep
+        <\/>  may ast mbWarn
+        <> sepPoint fsep
+        <\/>  may ast mbExportList
+        <> sepPoint fsep
+        <> infoPoint "where"
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty WarningText where
-  astPretty w = case w of
-    (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
-    (WarnText _ s) -> impl WarnText "{-# WARNING"    s
-    where
-      -- mySep
-      impl f c s = resultPretty $ startPretty f <> infoPoint c <> sepPoint hsep <\/> raw s <> sepPoint fsep <> infoPoint "#}"
+    astPretty w = case w of
+      (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
+      (WarnText _ s) -> impl WarnText "{-# WARNING"    s
+      where
+        -- mySep
+      impl f c s = resultPretty $ startPretty f <> infoPoint c <> sepPoint hsep <\/> rawS s <> sepPoint fsep <> infoPoint "#}"
 
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ModuleName where
-  astPretty (ModuleName _ s) = do
-    span <- format s
-    return $ ModuleName (noInfoSpan span) s
+  astPretty (ModuleName _ s) = resultPretty $ startPretty ModuleName <\/> rawS s
 
 -- --------------------------------------------------------------------------
 
@@ -280,13 +259,9 @@ instance AstPretty ExportSpecList where
 
 instance AstPretty ExportSpec where
 
-  astPretty (EVar _ name) = do
-    qn <- astPretty name
-    return $ EVar (noInfoSpan.srcInfoSpan $ ann qn) qn
+  astPretty (EVar _ name) = resultPretty $ startPretty EVar <\/> astInfoPoint name
 
-  astPretty (EAbs _ name) = do
-    qn <- astPretty name
-    return $ EAbs (noInfoSpan.srcInfoSpan $ ann qn) qn
+  astPretty (EAbs _ name) = resultPretty $ startPretty EAbs <\/> astInfoPoint name
 
   astPretty (EThingAll _ name) = do
     qn <- astPretty name
@@ -298,23 +273,35 @@ instance AstPretty ExportSpec where
       <\/> ast name
       <\/> parenList nameList
 
-
-  astPretty (EModuleContents _ m) = do
-          qn <- astPretty m
-          return $ EModuleContents (noInfoSpan.srcInfoSpan $ ann qn) qn
+  astPretty (EModuleContents _ m) = resultPretty $ startPretty EModuleContents <\/> astInfoPoint m
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ImportDecl where
-  astPretty (ImportDecl _ mod qual src pkg asMod specs)= do
-    -- mySep
-    _ <- markLine
-    sp <- format "import"
-    _  <- space 1
-    src'  <- if src  then format "{-# SOURCE #-}" else emptySpan
-    qual' <- if qual then format "qualified"      else emptySpan
-    m' <- astPretty mod
-    undefined
+  astPretty (ImportDecl _ mod qual src mbPkg mbName mbSpecs) =
+    resultPretty $ startPretty impl
+      -- markLine
+      -- mySep
+      <> infoPoint "import"
+      <> sepPoint hsep
+      <\/> raw (if src then "{-# SOURCE #-}" else "") src
+      <> sepPoint fsep
+      <\/>  raw (if qual then "qualified" else "") qual
+      <> sepPoint fsep
+      <\/>  may rawS mbPkg
+      <> sepPoint fsep
+      <\/>  ast mod
+      <> sepPoint fsep
+      <\/>  may ast mbName
+      <> sepPoint fsep
+      <\/>  may ast mbSpecs
+    where impl l s q p m n sp = ImportDecl undefined m q s p n sp
+
+instance AstPretty ImportSpecList where
+  astPretty = undefined
+
+instance AstPretty ImportSpec where
+  astPretty = undefined
 
 -------------------------  Declarations ------------------------------
 
@@ -323,68 +310,65 @@ instance AstPretty Decl where astPretty = undefined
 ------------------------- Pragmas ---------------------------------------
 
 instance AstPretty ModulePragma where
-  astPretty (LanguagePragma _ []) = do
-    -- myFsep
-    sp <- getPos
-    return $ LanguagePragma (noInfoSpan $ mkSrcSpan sp sp) []
 
-  astPretty (LanguagePragma _ ns) = do
+  astPretty (LanguagePragma _ ns) =
+    resultPretty $ startPretty LanguagePragma
     -- myFsep
-    (span, ls) <- genericParenList (format "{-# LANGUAGE") (format "#-}") $ infoPrettyList (punctuate (format ",") myFsep) ns
-    return $ LanguagePragma span ls
+      <> infoPoint "{-# LANGUAGE"
+      <> sepPoint myFsep
+      <\/> list (infoPoint "," <> sepPoint myFsep) ns
+      <> sepPoint myFsep
+      <> infoPoint "#-}"
 
   astPretty (OptionsPragma _ mbTool s) = do
     -- myFsep
     let
-      t = case mbTool of
+      opt = "{-# OPTIONS_" ++ case mbTool of
         Nothing -> ""
         Just (UnknownTool u) -> show u
-        Just tool -> show tool
+        Just tool -> show tool in
+      resultPretty $ startPretty OptionsPragma
+        <\/> raw "" mbTool
+        <>   infoPoint opt
+        <> sepPoint myFsep
+        <\/> rawS s
+        <> sepPoint myFsep
+        <>   infoPoint "#-}"
 
-    sp <- format $ "{-# OPTIONS_" ++ t
-    _  <- format s
-    cp <- format "#-}"
-    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
-    return $ OptionsPragma span mbTool s
-
-  astPretty (AnnModulePragma _ ann) = do
-    -- myFsep
-    sp <- format "{-# ANN"
-    ann'  <- astPretty ann
-    cp <- format "#-}"
-    let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
-    return $ AnnModulePragma span ann'
+  astPretty (AnnModulePragma _ ann) =
+    resultPretty $ startPretty AnnModulePragma
+      -- myFsep
+      <>   infoPoint "{-# ANN"
+      <>   sepPoint myFsep
+      <\/> astInfoPoint ann
+      <>   sepPoint myFsep
+      <>   infoPoint "#-}"
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty Annotation where
-  astPretty (Ann _ n e) = do
-    -- myFsep
-    sp <- getPos
-    n' <- astPretty n
-    e' <- astPretty e
-    ep <- getPos
-    let span = noInfoSpan $ mkSrcSpan sp ep
-    return $ Ann span n' e'
+  astPretty (Ann _ n e) =
+    resultPretty $ startPretty Ann
+      -- myFsep
+      <\/> astInfoPoint n
+      <> sepPoint myFsep
+      <\/> astInfoPoint e
 
-  astPretty (TypeAnn _ n e) = do
-    -- myFsep
-    sp <- getPos
-    t <- format "type"
-    n' <- astPretty n
-    e' <- astPretty e
-    ep <- getPos
-    let span = SrcSpanInfo (mkSrcSpan sp ep) [t]
-    return $ TypeAnn span n' e'
+  astPretty (TypeAnn _ n e) =
+    resultPretty $ startPretty TypeAnn
+      -- myFsep
+      <> infoPoint "type"
+      <> sepPoint myFsep
+      <\/> astInfoPoint n
+      <> sepPoint myFsep
+      <\/> astInfoPoint e
 
-  astPretty (ModuleAnn _ e) = do
-    -- myFsep
-    sp <- getPos
-    t <- format "module"
-    e' <- astPretty e
-    ep <- getPos
-    let span = SrcSpanInfo (mkSrcSpan sp ep) [t]
-    return $ ModuleAnn span e'
+  astPretty (ModuleAnn _ e) =
+    resultPretty $ startPretty ModuleAnn
+      -- myFsep
+      <> infoPoint "module"
+      <> sepPoint myFsep
+      <\/> astInfoPoint e
 
 ------------------------- Expressions -------------------------
 
@@ -394,58 +378,34 @@ instance AstPretty Exp where
 -- --------------------------------------------------------------------------
 
 instance AstPretty  CName where
-
-  astPretty (VarName _ name) = do
-    n <- astPretty name
-    return $ VarName (noInfoSpan.srcInfoSpan $ ann n) n
-
-  astPretty (ConName _ name) = do
-    n <- astPretty name
-    return $ ConName (noInfoSpan.srcInfoSpan $ ann n) n
+  astPretty (VarName _ name) = resultPretty $ startPretty VarName <\/> astInfoPoint name
+  astPretty (ConName _ name) = resultPretty $ startPretty ConName <\/> astInfoPoint name
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty SpecialCon where
 
-  astPretty (UnitCon _) = do
-    span <- format "()"
-    return $ UnitCon (noInfoSpan  span)
+  astPretty (UnitCon _) = resultPretty $ startPretty UnitCon <> infoPoint "()"
+  astPretty (ListCon _) = resultPretty $ startPretty ListCon <> infoPoint "[]"
+  astPretty (FunCon _) = resultPretty $ startPretty FunCon <> infoPoint "->"
+  astPretty (TupleCon _ b n) =
+    let
+      hash = if b == Unboxed then "#" else ""
+      point = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")" in
+    resultPretty $ startPretty TupleCon
+      <> infoPoint point
+      <\/> raw "" b
+      <\/> raw "" n
 
-  astPretty (ListCon _) = do
-    span <- format "[]"
-    return $ ListCon (noInfoSpan  span)
-
-  astPretty (FunCon _) = do
-    span <- format "->"
-    return $ FunCon (noInfoSpan  span)
-
-  astPretty (TupleCon _ b n) = do
-    let hash = if b == Unboxed then "#" else ""
-    span <- format $ "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
-    return $ TupleCon (noInfoSpan  span) b n
-
-  astPretty (Cons _) = do
-    span <- format ":"
-    return $ Cons (noInfoSpan  span)
-
-  astPretty (UnboxedSingleCon _) = do
-    span <- format "(# #)"
-    return $ UnboxedSingleCon (noInfoSpan  span)
+  astPretty (Cons _) = resultPretty $ startPretty Cons <> infoPoint ":"
+  astPretty (UnboxedSingleCon _) = resultPretty $ startPretty UnboxedSingleCon <> infoPoint "(# #)"
 
 -- --------------------------------------------------------------------------
 
-
 instance AstPretty QName where
   astPretty qn
-    | needParens = do
-      openParen <- format "("
-      _ <- space 1
-      qn' <- rawQName qn
-      closeParen <- format ")"
-      let span = (openParen <^^> closeParen) <** [openParen, srcInfoSpan $ ann qn', closeParen]
-      return $ amap (const span) qn'
-
-    | otherwise = rawQName qn
+    | needParens = resultPretty $ enclose (infoPoint "(" <> sepPoint hsep) (infoPoint ")") (rawQName qn)
+    | otherwise =  resultPretty $ rawQName qn
     where
       needParens = case qn of
         UnQual _    (Symbol _ _) -> True
@@ -456,36 +416,26 @@ instance AstPretty QName where
 
 -- --------------------------------------------------------------------------
 -- QName utils
-
-rawQName :: QName t -> DocM (QName SrcSpanInfo)
-
-rawQName (Qual _ mn n)  = do
-  m' <- astPretty mn
-  _  <- format "."
-  n'  <- rawName n
-  let span  = ann m' <++> ann n'
-  return $ Qual span m' n'
-
-rawQName (UnQual _ n) = do
-  n' <- rawName n
-  return $ UnQual (ann n') n'
-
-rawQName (Special _ sc) = do
-  val <- astPretty sc
-  return $ Special (noInfoSpan.srcInfoSpan $ ann val) val
+rawQName :: QName a -> AstElement (QName SrcSpanInfo)
+rawQName (Qual _ mn n)  =
+  startPretty Qual
+    <\/> astInfoPoint mn
+    <>   infoPoint "."
+    <\/> rawName n
+rawQName (UnQual _ n) =
+  startPretty UnQual <\/> rawName n
+rawQName (Special _ sc) = startPretty Special <\/> astInfoPoint sc
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty Name where
-  astPretty n@(Ident _ _) = rawName n
-
-  astPretty (Symbol _ str) = do
-    openParen <- format "("
-    _ <- space 1
-    name <- format str
-    closeParen <- format ")"
-    let span = (openParen <^^> closeParen) <** [openParen, name, closeParen]
-    return $ Symbol span str
+  astPretty n@(Ident _ _) = resultPretty $ rawName n
+  astPretty (Symbol _ s) =
+    resultPretty $ startPretty Symbol
+      <> infoPoint "("
+      <> sepPoint hsep
+      <\/> rawS s
+      <> infoPoint ")"
 
 -- --------------------------------------------------------------------------
 
@@ -495,78 +445,9 @@ isSymbol _ = False
 
 -- --------------------------------------------------------------------------
 
-rawName :: Name t -> DocM (Name SrcSpanInfo)
-
-rawName (Symbol _ s) = do
-  span <- format s
-  return $ Symbol (noInfoSpan  span) s
-
-rawName (Ident _ s) = do
-  span <- format s
-  return $ Ident (noInfoSpan  span) s
-
--- --------------------------------------------------------------------------
-
-noInfoPrettyList :: AstPretty ast =>
-  DocM s -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-
-noInfoPrettyList _ [] = do
-  sp <- getPos
-  return (noInfoSpan $ mkSrcSpan sp sp, [])
-
-noInfoPrettyList sep (e:es) = do
-  sp <- getPos
-  e' <- astPretty e
-  xs <- foldM (\ acc i -> do
-    p <- sep
-    x <- astPretty i
-    return (x:acc))
-    [e']
-    es
-  ep <- getPos
-  return (noInfoSpan $ mkSrcSpan sp ep, reverse xs)
-
--- --------------------------------------------------------------------------
-
-infoPrettyList :: AstPretty ast =>
-  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-
-infoPrettyList _ [] = do
-  b <- getPos
-  return (noInfoSpan $ mkSrcSpan b b, [])
-
-infoPrettyList sep (e:es) = do
-  sp <- getPos
-  e' <- astPretty e
-  (ps, xs) <- foldM (\ (ps, xs) i -> do
-    p <- sep
-    x <- astPretty i
-    return (p:ps, x:xs))
-    ([], [e'])
-    es
-  ep <- getPos
-  let span = SrcSpanInfo (mkSrcSpan sp ep) (reverse ps )
-  return (span, reverse xs)
-
--- --------------------------------------------------------------------------
-
-punctuate :: DocM SrcSpan -> DocM () -> DocM SrcSpan
-punctuate p sep = do
-  p' <- p
-  _  <- sep
-  return p'
-
--- --------------------------------------------------------------------------
-
-genericParenList :: AstPretty ast =>
-  DocM SrcSpan -> DocM SrcSpan -> DocM (SrcSpanInfo, [ast SrcSpanInfo]) -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
-
-genericParenList openParen closeParen ls = do
-  op <- openParen
-  (s, xs) <- ls
-  cp <- closeParen
-  let ps = (op : srcInfoPoints s) ++ [cp]
-  return (SrcSpanInfo (mergeSrcSpan op cp) ps, xs)
+rawName :: Name t -> AstElement (Name a)
+rawName (Symbol _ s) = startPretty Symbol <\/> rawS s
+rawName (Ident _ s)  = startPretty Ident  <\/> rawS s
 
 -- --------------------------------------------------------------------------
 
@@ -595,14 +476,6 @@ fsep  = do
 
 ------------------------- pp utils -------------------------
 
-maybePP :: AstPretty ast => Maybe (ast a) -> DocM (Maybe (ast SrcSpanInfo))
-maybePP Nothing = return Nothing
-maybePP (Just a) = do
-  a' <- astPretty a
-  return $ Just a'
-
--- --------------------------------------------------------------------------
-
 parenList xs = infoPoint "(" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint ")"
 
 hashParenList xs = infoPoint "(#" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint "#)"
@@ -611,8 +484,9 @@ braceList xs = infoPoint "{" <> list (infoPoint "," <> sepPoint myFsepSimple) xs
 
 bracketList xs = infoPoint "[" <> list (sepPoint myFsepSimple) xs <> infoPoint "]"
 
--- --------------------------------------------------------------------------
+enclose ob cb x = ob <> x <> cb
 
+-- --------------------------------------------------------------------------
 -- Wrap in braces and semicolons, with an extra space at the start in
 -- case the first doc begins with "-", which would be scanned as {-
 
@@ -642,25 +516,16 @@ topLevel dl = Ast $ do
       x
 
 -- --------------------------------------------------------------------------
+{-
+a $$$ b = layoutChoice (a vcat) (a <+>) b
 
-mySep :: AstPretty ast =>
-  DocM SrcSpan -> [ast a] -> DocM (SrcSpanInfo, [ast SrcSpanInfo])
--- mySep prototype
-
-mySep _ [] = error "Internal error: mySep"
-
-mySep _ [x] = infoPrettyList undefined [x]
-
-mySep p (x:xs) = do
-  sp <- getPos
-  x' <- astPretty x
-  p' <- p
-  _ <- space 1
-  (ps, xs') <- infoPrettyList (punctuate p fsep) xs
-  ep <- getPos
-
-  let span = SrcSpanInfo (mkSrcSpan sp ep) (p' : srcInfoPoints ps)
-  return (span, x' : xs')
+mySep = layoutChoice mySep' hsep
+  where
+    -- ensure paragraph fills with indentation.
+    mySep' [x]    = x
+    mySep' (x:xs) = x <+> fsep xs
+    mySep' []     = error "Internal error: mySep"
+-}
 
 -- --------------------------------------------------------------------------
 
@@ -702,4 +567,12 @@ layoutChoice a b  = do
 markLine :: DocM ()
 markLine = return () -- not implemented yet
 
+zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
 
+-- -----------------------------------------------------------------------------
+
+ilist = [Ident undefined "fst", Ident undefined "second"]-- , Ident undefined "third", Ident undefined "four"]
+
+rZero = renderWithMode (PrettyMode PR.defaultMode (Style PageMode 10 1.5)) zeroSt
+
+ftst = let Ast x = list (infoPoint "," <> sepPoint hsep ) ilist in rZero x
