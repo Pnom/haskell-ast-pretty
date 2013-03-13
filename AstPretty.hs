@@ -88,11 +88,6 @@ empty = return ()
 
 -- --------------------------------------------------------------------------
 
-val :: a -> DocM a
-val a = return a
-
--- --------------------------------------------------------------------------
-
 emptySpan :: DocM SrcSpan
 emptySpan = do
   sp <- getPos
@@ -100,50 +95,74 @@ emptySpan = do
 
 -- --------------------------------------------------------------------------
 
-updateSrcSpan (SrcSpanInfo (SrcSpan f sl sc _ _) ps) (SrcLoc _ el ec) p =
-  SrcSpanInfo (SrcSpan f sl sc el ec) (ps ++ p)
+data AstElement a = Ast (DocM (a, [SrcSpan]))
+  | InfoPoint (DocM [SrcSpan])
 
--- --------------------------------------------------------------------------
-
-ast :: DocM (a -> b, SrcSpanInfo) -> DocM a -> DocM (b, SrcSpanInfo)
-ast f a = do
-  sa <- getPos
-  a' <- a
-  ea <- getPos
-  f' <- f
-  ep <- getPos
-  return (fst f' a', updateSrcSpan (snd f') ep [mkSrcSpan sa ea])
-
--- --------------------------------------------------------------------------
-
-separate :: DocM (a, SrcSpanInfo) -> DocM p -> DocM (a, SrcSpanInfo)
-separate f s = do
-  _ <- s
-  f' <- f
-  ep <- getPos
-  return (fst f', updateSrcSpan (snd f') ep [])
-
--- --------------------------------------------------------------------------
-
-point :: DocM (a, SrcSpanInfo) -> DocM SrcSpan -> DocM (a, SrcSpanInfo)
-point f p = do
+(<>) :: AstElement a -> AstElement a -> AstElement a
+Ast a <> InfoPoint p = Ast $ do
+  (a', ps) <- a
   p' <- p
-  f' <- f
+  return (a', ps ++ p')
+InfoPoint p <> Ast a = Ast $ do
+  p' <- p
+  (a', ps) <- a
+  return (a', p' ++ ps)
+InfoPoint l <> InfoPoint r = InfoPoint $ do
+  l' <- l
+  r' <- r
+  return $ l' ++ r'
+
+(<\/>) :: AstElement (a -> b) -> AstElement a -> AstElement b
+(<\/>) (Ast f) (Ast a) = Ast $ do
+  (a', p) <- a
+  (f', ps) <- f
+  return (f' a', ps ++ p)
+
+-- --------------------------------------------------------------------------
+
+ast :: (Annotated ast, AstPretty ast) => ast a -> AstElement (ast SrcSpanInfo)
+ast a = Ast $ do
+  a' <- astPretty a
+  return (a', [])
+
+astInfoPoint :: (Annotated ast, AstPretty ast) => ast a -> AstElement (ast SrcSpanInfo)
+astInfoPoint a = Ast $ do
+  a' <- astPretty a
+  return (a', [srcInfoSpan $ ann a'])
+
+astArr :: (Annotated ast, AstPretty ast) => ast a -> AstElement [ast SrcSpanInfo]
+astArr a = Ast $ do
+  a' <- astPretty a
+  return ([a'], [])
+
+raw :: String -> AstElement String
+raw s = Ast $ do
+  s' <- format s
+  return (s, [s'])
+
+sepPoint :: DocM a -> AstElement b
+sepPoint p = InfoPoint $ do
+  _ <- p
+  return []
+
+infoPoint :: String -> AstElement a
+infoPoint s = InfoPoint $ do
+  p <- format s
+  return [p]
+
+-- --------------------------------------------------------------------------
+
+startPretty :: (a -> b) -> AstElement b
+startPretty f = Ast $ return (f undefined, [])
+
+-- --------------------------------------------------------------------------
+
+resultPretty :: Annotated ast => AstElement (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
+resultPretty (Ast res) = do
+  sp <- getPos
+  (m, ps) <- res
   ep <- getPos
-  return (fst f', updateSrcSpan (snd f') ep [p'])
-
--- --------------------------------------------------------------------------
-
-startPretty :: (a -> b) -> DocM (b, SrcSpanInfo)
-startPretty f = do
-  sp <- emptySpan
-  return (f undefined, SrcSpanInfo sp [])
-
--- --------------------------------------------------------------------------
-
-resultPretty :: Annotated ast => DocM (ast SrcSpanInfo, SrcSpanInfo) -> DocM (ast SrcSpanInfo)
-resultPretty res = do
-  (m, span) <- res
+  let span = SrcSpanInfo (mkSrcSpan sp ep) ps
   return $ amap (const span) m
 
 -- --------------------------------------------------------------------------
@@ -207,22 +226,13 @@ instance AstPretty ModuleHead where
 -- --------------------------------------------------------------------------
 
 instance AstPretty WarningText where
-    astPretty w = case w of
-      (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
-      (WarnText _ s) -> impl WarnText "{-# WARNING"    s
-      where
-        -- mySep
-        impl f c s = do
-          sp <- format c
-          _ <- space 1
-          _ <- format s
-          _ <- fsep
-          cp <- format "#-}"
-          let span = SrcSpanInfo (mergeSrcSpan sp cp) [sp, cp]
-          return $ f span s
-{-
-          impl f c s = resultPretty $ startPretty f `separate` space 1 `ast` val s `separate` fsep `point` format "#}"
--}
+  astPretty w = case w of
+    (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
+    (WarnText _ s) -> impl WarnText "{-# WARNING"    s
+    where
+      -- mySep
+      impl f c s = resultPretty $ startPretty f <> infoPoint c <> sepPoint hsep <\/> raw s <> sepPoint fsep <> infoPoint "#}"
+
 
 -- --------------------------------------------------------------------------
 
