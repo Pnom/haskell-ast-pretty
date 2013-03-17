@@ -11,9 +11,13 @@ import Language.Haskell.Exts.Annotated
 import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Applicative
 
 import Data.Maybe
-import Data.List
+import Data.List hiding (intersperse)
+import Data.Traversable
+
+import Debug.Trace
 
 data DocState = DocState {
   pos :: !SrcLoc,
@@ -71,7 +75,7 @@ line = do
 space :: Int -> DocM ()
 space x = do
   SrcLoc f l c <- getPos
-  putPos $! SrcLoc f l (c + x)
+  putPos $! SrcLoc f l $! c + x
   return ()
 
 -- --------------------------------------------------------------------------
@@ -79,118 +83,74 @@ space x = do
 nest :: Int -> DocM ()
 nest x = do
   DocState l n <- get
-  put $! DocState l (1 + n + x)
+  put $! DocState l $ 1 + n + x
   return ()
 
 -- --------------------------------------------------------------------------
 
-empty :: DocM ()
-empty = return ()
+data AstElem a = AstElem (DocM (a, [SrcSpan]))
+
+instance Functor AstElem where
+  fmap f (AstElem a) = AstElem $ do
+    (a', ps) <- a
+    return $ (f a', ps)
+
+instance Applicative AstElem where
+  pure a = AstElem $ return (a, [])
+
+  (<*>) (AstElem f) (AstElem a) = AstElem $ do
+    (a', p) <- a
+    (f', ps) <- f
+    return (f' a', ps ++ p)
+
+  (*>) (AstElem a) (AstElem b) = AstElem $ do
+    (_,  ap) <- a
+    (b', bp) <- b
+    return (b', ap ++ bp)
+
+  (<*) (AstElem a) (AstElem b) = AstElem $ do
+    (a', ap) <- a
+    (_,  bp) <- b
+    return (a', ap ++ bp)
 
 -- --------------------------------------------------------------------------
 
-data AstElement a = Ast (DocM (a, [SrcSpan]))
-  | InfoPoint (DocM [SrcSpan])
+infoElem :: String -> AstElem ()
+infoElem s = AstElem $ do
+  s' <- format s
+  return ((), [s'])
 
-(<>) :: AstElement a -> AstElement a -> AstElement a
-Ast a <> InfoPoint p = Ast $ do
-  (a', ps) <- a
-  p' <- p
-  return (a', ps ++ p')
-InfoPoint p <> Ast a = Ast $ do
-  p' <- p
-  (a', ps) <- a
-  return (a', p' ++ ps)
-InfoPoint l <> InfoPoint r = InfoPoint $ do
-  l' <- l
-  r' <- r
-  return $ l' ++ r'
+sepElem :: DocM() -> AstElem ()
+sepElem s = AstElem $ do
+  _ <- s
+  return ((), [])
 
-(<\/>) :: AstElement (a -> b) -> AstElement a -> AstElement b
-(<\/>) (Ast f) (Ast a) = Ast $ do
-  (a', p) <- a
-  (f', ps) <- f
-  return (f' a', ps ++ p)
-
-
-(|++|) :: AstElement [a] -> AstElement [a] -> AstElement [a]
-Ast l |++| Ast r = Ast $ do
--- what if l and r are lists
-  (l', ls) <- l
-  (r', rs) <- r
-  return (l' ++ r', ls ++ rs)
-
-(|+|) :: AstElement a -> AstElement [a] -> AstElement [a]
-Ast l |+| Ast r = Ast $ do
--- what if l and r are lists
-  (l', ls) <- l
-  (r', rs) <- r
-  return (l':r', ls ++ rs)
-
-
--- --------------------------------------------------------------------------
-
-ast :: (Annotated ast, AstPretty ast) => ast a -> AstElement (ast SrcSpanInfo)
-ast a = Ast $ do
+astElem :: (AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
+astElem a = AstElem $ do
   a' <- astPretty a
   return (a', [])
 
-astInfoPoint :: (Annotated ast, AstPretty ast) => ast a -> AstElement (ast SrcSpanInfo)
-astInfoPoint a = Ast $ do
-  a' <- astPretty a
-  return (a', [srcInfoSpan $ ann a'])
-
-astArr :: (Annotated ast, AstPretty ast) => ast a -> AstElement [ast SrcSpanInfo]
-astArr a = Ast $ do
-  a' <- astPretty a
-  return ([a'], [])
-
-raw :: String -> a -> AstElement a
-raw "" a = Ast $ return (a, [])
-raw s a = Ast $ do
+strElem s = AstElem $ do
   s' <- format s
-  return (a, [s'])
+  return (s, [])
 
-rawS :: String -> AstElement String
-rawS s = raw s s
-
-sepPoint :: DocM a -> AstElement b
-sepPoint p = InfoPoint $ do
-  _ <- p
-  return []
-
-infoPoint :: String -> AstElement a
-infoPoint s = InfoPoint $ do
-  p <- format s
-  return [p]
-
-may :: (a -> AstElement b) -> Maybe a -> AstElement (Maybe b)
-may f (Just a) = Ast $ do
-  let Ast f' = f a
-  (a', p) <- f'
-  return (Just a', p)
-may _ Nothing = Ast $ return (Nothing, [])
+rawElem a s = undefined
 
 -- --------------------------------------------------------------------------
 
-list:: (Annotated ast, AstPretty ast) => AstElement [ast SrcSpanInfo] -> [ast a] -> AstElement [ast SrcSpanInfo]
-list  _ [] = Ast $ return ([], [])
-list sep es = let (e:es') = reverse es in foldl' (\ ac i -> (ast i) |+| (sep <> ac) ) (astArr e) es'
+intersperse :: Applicative f => f a1 -> [f a] -> f [a]
+intersperse _ [] = pure []
+intersperse sep (e:es) = (:) <$> e <*> (sequenceA $ map (sep *>) es)
 
 -- --------------------------------------------------------------------------
 
-startPretty :: (a -> b) -> AstElement b
-startPretty f = Ast $ return (f undefined, [])
-
--- --------------------------------------------------------------------------
-
-resultPretty :: Annotated ast => AstElement (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
-resultPretty (Ast res) = do
+--resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
+resultPretty (AstElem a) = do
   sp <- getPos
-  (m, ps) <- res
+  (a', ps) <- a
   ep <- getPos
   let span = SrcSpanInfo (mkSrcSpan sp ep) ps
-  return $ amap (const span) m
+  return $ amap (const span) a'
 
 -- --------------------------------------------------------------------------
 
@@ -204,17 +164,17 @@ class AstPretty ast where
 
 instance AstPretty Module where
   astPretty (Module _ mbHead os imp decls) =
-    resultPretty $ startPretty impl
-      <\/> vcatList os
-      <> sepPoint myVcat
-      <\/> may ast mbHead
-      <> sepPoint myVcat
-      <\/> prettyLs imp
-      <> sepPoint myVcat
-      <\/> prettyLs decls
+    resultPretty $ pure impl
+      <*> vcatList os
+      <*  sepElem myVcat
+      <*> traverse astElem mbHead
+      <*  sepElem myVcat
+      <*> prettyLs imp
+      <*  sepElem myVcat
+      <*> prettyLs decls
       where
-        impl _ os h i d = Module undefined h os i d
-        vcatList dl = list (sepPoint myVcat) dl
+        impl os h i d = Module undefined h os i d
+        vcatList dl = intersperse (sepElem myVcat) $ map astElem dl
         prettyLs dl = (if isJust mbHead then topLevel else vcatList) dl
   astPretty (XmlPage pos _mn os n attrs mattr cs) = undefined
   astPretty (XmlHybrid pos mbHead os imp decls n attrs mattr cs) = undefined
@@ -224,15 +184,16 @@ instance AstPretty Module where
 instance AstPretty ModuleHead where
  -- mySep
   astPretty (ModuleHead _ m mbWarn mbExportList) =
-    resultPretty $ startPretty ModuleHead <> infoPoint "module"
-        <> sepPoint hsep
-        <\/> ast m
-        <> sepPoint fsep
-        <\/>  may ast mbWarn
-        <> sepPoint fsep
-        <\/>  may ast mbExportList
-        <> sepPoint fsep
-        <> infoPoint "where"
+    resultPretty $ pure (ModuleHead undefined)
+      <*  infoElem "module"
+      <*  sepElem hsep
+      <*> astElem m
+      <*  sepElem fsep
+      <*> traverse astElem mbWarn
+      <*  sepElem fsep
+      <*> traverse astElem mbExportList
+      <*  sepElem fsep
+      <*  infoElem "where"
 
 -- --------------------------------------------------------------------------
 
@@ -242,91 +203,91 @@ instance AstPretty WarningText where
       (WarnText _ s) -> impl WarnText "{-# WARNING"    s
       where
         -- mySep
-      impl f c s = resultPretty $ startPretty f <> infoPoint c <> sepPoint hsep <\/> rawS s <> sepPoint fsep <> infoPoint "#}"
+      impl f c s = resultPretty $ pure (f undefined) <* infoElem c <* sepElem hsep <*> strElem s <* sepElem fsep <* infoElem "#}"
 
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ModuleName where
-  astPretty (ModuleName _ s) = resultPretty $ startPretty ModuleName <\/> rawS s
+  astPretty (ModuleName _ s) = resultPretty $ pure (ModuleName undefined) <*> strElem s
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpecList where
   astPretty (ExportSpecList _ especs) =
-    resultPretty $ startPretty ExportSpecList <\/> parenList especs
+    resultPretty $ pure (ExportSpecList undefined) <*> parenList especs
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpec where
 
-  astPretty (EVar _ name) = resultPretty $ startPretty EVar <\/> astInfoPoint name
+  astPretty (EVar _ name) = resultPretty $ pure (EVar undefined) <*> astElem name
 
-  astPretty (EAbs _ name) = resultPretty $ startPretty EAbs <\/> astInfoPoint name
+  astPretty (EAbs _ name) = resultPretty $ pure (EAbs undefined) <*> astElem name
 
   astPretty (EThingAll _ name) =
-    resultPretty $ startPretty EThingAll <\/> ast name <> infoPoint "(..)"
+    resultPretty $ pure (EThingAll undefined) <*> astElem name <* infoElem "(..)"
 
   astPretty (EThingWith _ name nameList) =
-    resultPretty $ startPretty EThingWith
-      <\/> ast name
-      <\/> parenList nameList
+    resultPretty $ pure (EThingWith undefined)
+      <*> astElem name
+      <*> parenList nameList
 
-  astPretty (EModuleContents _ m) = resultPretty $ startPretty EModuleContents <\/> astInfoPoint m
+  astPretty (EModuleContents _ m) = resultPretty $ pure (EModuleContents undefined) <*> astElem m
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ImportDecl where
   astPretty (ImportDecl _ mod qual src mbPkg mbName mbSpecs) =
-    resultPretty $ startPretty impl
+    resultPretty $ pure impl
       -- markLine
       -- mySep
-      <> infoPoint "import"
-      <> sepPoint hsep
-      <\/> raw (if src then "{-# SOURCE #-}" else "") src
-      <> sepPoint fsep
-      <\/>  raw (if qual then "qualified" else "") qual
-      <> sepPoint fsep
-      <\/>  may rawS mbPkg
-      <> sepPoint fsep
-      <\/>  ast mod
-      <> sepPoint fsep
-      <\/>  may ast mbName
-      <> sepPoint fsep
-      <\/>  may ast mbSpecs
-    where impl l s q p m n sp = ImportDecl undefined m q s p n sp
+      <* infoElem "import"
+      <* sepElem hsep
+      <*> rawElem  src (if src then "{-# SOURCE #-}" else "")
+      <* sepElem fsep
+      <*>  rawElem qual (if qual then "qualified" else "")
+      <* sepElem fsep
+      <*>  traverse strElem mbPkg
+      <* sepElem fsep
+      <*>  astElem mod
+      <* sepElem fsep
+      <*>  traverse astElem mbName
+      <* sepElem fsep
+      <*>  traverse astElem mbSpecs
+    where impl s q p m n sp = ImportDecl undefined m q s p n sp
 
 instance AstPretty ImportSpecList where
   astPretty (ImportSpecList _ b ispecs) =
-    resultPretty $ startPretty ImportSpecList
-      <\/> raw (if b then "hiding" else "") b
-      <>   sepPoint hsep
-      <\/> parenList ispecs
+    resultPretty $ pure (ImportSpecList undefined)
+      <*> rawElem b (if b then "hiding" else "")
+      <*  sepElem hsep
+      <*> parenList ispecs
 
 instance AstPretty ImportSpec where
-  astPretty (IVar _ name)                = resultPretty $ startPretty IVar <\/> ast name
-  astPretty (IAbs _ name)                = resultPretty $ startPretty IAbs <\/> ast name
+  astPretty (IVar _ name)                = resultPretty $ pure (IVar undefined) <*> astElem name
+  astPretty (IAbs _ name)                = resultPretty $ pure (IAbs undefined) <*> astElem name
   astPretty (IThingAll _ name)           =
-    resultPretty $ startPretty IThingAll <\/> ast name <> infoPoint "(..)"
+    resultPretty $ pure (IThingAll undefined) <*> astElem name <* infoElem "(..)"
   astPretty (IThingWith _ name nameList) =
-    resultPretty $ startPretty IThingWith <\/> ast name <\/> parenList nameList
+    resultPretty $ pure (IThingWith undefined) <*> astElem name <*> parenList nameList
 
 
 -------------------------  Declarations ------------------------------
 
 instance AstPretty Decl where
   astPretty (TypeDecl _ head htype) =
-    resultPretty $ startPretty TypeDecl
-      <> blankline
+    resultPretty $ pure (TypeDecl undefined)
+      <* blankline
       -- markLine
       -- mySep
-      <> infoPoint "type"
-      <> sepPoint hsep
-      <\/> ast head
-      <> sepPoint fsep
-      <> infoPoint "="
-      <> sepPoint fsep
-      <\/> ast htype
+      <* infoElem "type"
+      <* sepElem hsep
+      <*> astElem head
+      <* sepElem fsep
+      <* infoElem "="
+      <* sepElem fsep
+      <*> astElem htype
 
   astPretty _ = undefined
 
@@ -337,13 +298,13 @@ instance AstPretty DeclHead where astPretty = undefined
 instance AstPretty ModulePragma where
 
   astPretty (LanguagePragma _ ns) =
-    resultPretty $ startPretty LanguagePragma
+    resultPretty $ pure (LanguagePragma undefined)
     -- myFsep
-      <> infoPoint "{-# LANGUAGE"
-      <> sepPoint myFsep
-      <\/> list (infoPoint "," <> sepPoint myFsep) ns
-      <> sepPoint myFsep
-      <> infoPoint "#-}"
+      <* infoElem "{-# LANGUAGE"
+      <* sepElem myFsep
+      <*> undefined --  intersperse (infoElem "," <* sepElem myFsep) ns
+      <* sepElem myFsep
+      <* infoElem "#-}"
 
   astPretty (OptionsPragma _ mbTool s) = do
     -- myFsep
@@ -352,48 +313,48 @@ instance AstPretty ModulePragma where
         Nothing -> ""
         Just (UnknownTool u) -> show u
         Just tool -> show tool in
-      resultPretty $ startPretty OptionsPragma
-        <\/> raw "" mbTool
-        <>   infoPoint opt
-        <> sepPoint myFsep
-        <\/> rawS s
-        <> sepPoint myFsep
-        <>   infoPoint "#-}"
+      resultPretty $ pure (OptionsPragma undefined)
+        <*> pure mbTool
+        <*  infoElem opt
+        <*  sepElem myFsep
+        <*> strElem s
+        <*  sepElem myFsep
+        <*  infoElem "#-}"
 
   astPretty (AnnModulePragma _ ann) =
-    resultPretty $ startPretty AnnModulePragma
+    resultPretty $ pure (AnnModulePragma undefined)
       -- myFsep
-      <>   infoPoint "{-# ANN"
-      <>   sepPoint myFsep
-      <\/> astInfoPoint ann
-      <>   sepPoint myFsep
-      <>   infoPoint "#-}"
+      <*   infoElem "{-# ANN"
+      <*   sepElem myFsep
+      <*>  astElem ann
+      <*   sepElem myFsep
+      <*   infoElem "#-}"
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty Annotation where
   astPretty (Ann _ n e) =
-    resultPretty $ startPretty Ann
+    resultPretty $ pure (Ann undefined)
       -- myFsep
-      <\/> astInfoPoint n
-      <> sepPoint myFsep
-      <\/> astInfoPoint e
+      <*> astElem n
+      <*  sepElem myFsep
+      <*> astElem e
 
   astPretty (TypeAnn _ n e) =
-    resultPretty $ startPretty TypeAnn
+    resultPretty $ pure (TypeAnn undefined)
       -- myFsep
-      <> infoPoint "type"
-      <> sepPoint myFsep
-      <\/> astInfoPoint n
-      <> sepPoint myFsep
-      <\/> astInfoPoint e
+      <* infoElem "type"
+      <* sepElem myFsep
+      <*> astElem n
+      <* sepElem myFsep
+      <*> astElem e
 
   astPretty (ModuleAnn _ e) =
-    resultPretty $ startPretty ModuleAnn
+    resultPretty $ pure (ModuleAnn undefined)
       -- myFsep
-      <> infoPoint "module"
-      <> sepPoint myFsep
-      <\/> astInfoPoint e
+      <* infoElem "module"
+      <* sepElem myFsep
+      <*> astElem e
 
 ------------------------- Data & Newtype Bodies -------------------------
 instance AstPretty QualConDecl where astPretty = undefined
@@ -428,33 +389,33 @@ instance AstPretty Exp where astPretty = undefined
 -- --------------------------------------------------------------------------
 
 instance AstPretty  CName where
-  astPretty (VarName _ name) = resultPretty $ startPretty VarName <\/> astInfoPoint name
-  astPretty (ConName _ name) = resultPretty $ startPretty ConName <\/> astInfoPoint name
+  astPretty (VarName _ name) = resultPretty $ pure (VarName undefined) <*> astElem name
+  astPretty (ConName _ name) = resultPretty $ pure (ConName undefined) <*> astElem name
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty SpecialCon where
 
-  astPretty (UnitCon _) = resultPretty $ startPretty UnitCon <> infoPoint "()"
-  astPretty (ListCon _) = resultPretty $ startPretty ListCon <> infoPoint "[]"
-  astPretty (FunCon _) = resultPretty $ startPretty FunCon <> infoPoint "->"
+  astPretty (UnitCon _) = resultPretty $ pure (UnitCon undefined) <* infoElem "()"
+  astPretty (ListCon _) = resultPretty $ pure (ListCon undefined) <* infoElem "[]"
+  astPretty (FunCon _) = resultPretty $ pure  (FunCon undefined)  <* infoElem "->"
   astPretty (TupleCon _ b n) =
     let
       hash = if b == Unboxed then "#" else ""
       point = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")" in
-    resultPretty $ startPretty TupleCon
-      <> infoPoint point
-      <\/> raw "" b
-      <\/> raw "" n
+    resultPretty $ pure (TupleCon undefined)
+      <* infoElem point
+      <*> pure b
+      <*> pure n
 
-  astPretty (Cons _) = resultPretty $ startPretty Cons <> infoPoint ":"
-  astPretty (UnboxedSingleCon _) = resultPretty $ startPretty UnboxedSingleCon <> infoPoint "(# #)"
+  astPretty (Cons _) = resultPretty $ pure (Cons undefined) <* infoElem ":"
+  astPretty (UnboxedSingleCon _) = resultPretty $ pure (UnboxedSingleCon undefined) <* infoElem "(# #)"
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty QName where
   astPretty qn
-    | needParens = resultPretty $ enclose (infoPoint "(" <> sepPoint hsep) (infoPoint ")") (rawQName qn)
+    | needParens = resultPretty $ enclose (infoElem "(" <* sepElem hsep) (infoElem ")") (rawQName qn)
     | otherwise =  resultPretty $ rawQName qn
     where
       needParens = case qn of
@@ -466,26 +427,26 @@ instance AstPretty QName where
 
 -- --------------------------------------------------------------------------
 -- QName utils
-rawQName :: QName a -> AstElement (QName SrcSpanInfo)
+rawQName :: QName a -> AstElem (QName SrcSpanInfo)
 rawQName (Qual _ mn n)  =
-  startPretty Qual
-    <\/> astInfoPoint mn
-    <>   infoPoint "."
-    <\/> rawName n
+  pure (Qual undefined)
+    <*> astElem mn
+    <*   infoElem "."
+    <*> rawName n
 rawQName (UnQual _ n) =
-  startPretty UnQual <\/> rawName n
-rawQName (Special _ sc) = startPretty Special <\/> astInfoPoint sc
+  pure (UnQual undefined) <*> rawName n
+rawQName (Special _ sc) = pure (Special undefined) <*> astElem sc
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty Name where
   astPretty n@(Ident _ _) = resultPretty $ rawName n
   astPretty (Symbol _ s) =
-    resultPretty $ startPretty Symbol
-      <> infoPoint "("
-      <> sepPoint hsep
-      <\/> rawS s
-      <> infoPoint ")"
+    resultPretty $ pure (Symbol undefined)
+      <* infoElem "("
+      <* sepElem hsep
+      <*> strElem s
+      <* infoElem ")"
 
 -- --------------------------------------------------------------------------
 
@@ -495,9 +456,9 @@ isSymbol _ = False
 
 -- --------------------------------------------------------------------------
 
-rawName :: Name t -> AstElement (Name a)
-rawName (Symbol _ s) = startPretty Symbol <\/> rawS s
-rawName (Ident _ s)  = startPretty Ident  <\/> rawS s
+rawName :: Name t -> AstElem (Name a)
+rawName (Symbol _ s) = pure (Symbol undefined) <*> strElem s
+rawName (Ident _ s)  = pure (Ident  undefined) <*> strElem s
 
 -- --------------------------------------------------------------------------
 
@@ -521,57 +482,58 @@ fsep  = do
   c <- getPos
   case mode style of
     PageMode ->
-      if srcColumn c >= lineLength style then line else empty
+      if srcColumn c >= lineLength style then line else (pure ())
     _ -> undefined
 
 ------------------------- pp utils -------------------------
 
-parenList xs = infoPoint "(" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint ")"
+parenList xs =  infoElem "(" *> (intersperse (infoElem "," <* sepElem myFsepSimple) $ map astElem xs) <* infoElem ")"
 
-hashParenList xs = infoPoint "(#" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint "#)"
+hashParenList xs = infoElem "(#" *> (intersperse (infoElem "," <* sepElem myFsepSimple) $ map astElem xs) <* infoElem "#)"
 
-braceList xs = infoPoint "{" <> list (infoPoint "," <> sepPoint myFsepSimple) xs <> infoPoint "}"
+braceList xs = infoElem "{" *> (intersperse (infoElem "," <* sepElem myFsepSimple) $ map astElem xs) <* infoElem "}"
 
-bracketList xs = infoPoint "[" <> list (sepPoint myFsepSimple) xs <> infoPoint "]"
+bracketList xs = infoElem "[" *> (intersperse (sepElem myFsepSimple) $ map astElem xs) <* infoElem "]"
 
-enclose ob cb x = ob <> x <> cb
+enclose ob cb x = ob *> x <* cb
 
 -- --------------------------------------------------------------------------
 -- Wrap in braces and semicolons, with an extra space at the start in
 -- case the first doc begins with "-", which would be scanned as {-
 
-flatBlock :: (Annotated ast, AstPretty ast) => [ast a] -> AstElement [ast SrcSpanInfo]
-flatBlock xs = infoPoint "{" <> sepPoint hsep <> list (infoPoint ";" <> sepPoint hsep) xs <> infoPoint "}"
+flatBlock :: (Annotated astElem, AstPretty astElem) => [astElem a] -> AstElem [astElem SrcSpanInfo]
+flatBlock xs = infoElem "{" *> sepElem hsep *> (intersperse (infoElem ";" <* sepElem hsep) $ map astElem xs) <* infoElem "}"
 
 -- Same, but put each thing on a separate line
-prettyBlock :: (Annotated ast, AstPretty ast) => [ast a] -> AstElement [ast SrcSpanInfo]
-prettyBlock xs = infoPoint "{" <> sepPoint hsep <> list (infoPoint ";" <> sepPoint vcat) xs <> infoPoint "}"
+prettyBlock :: (Annotated astElem, AstPretty astElem) => [astElem a] -> AstElem [astElem SrcSpanInfo]
+prettyBlock xs = infoElem "{" *> sepElem hsep *> (intersperse (infoElem ";" <* sepElem vcat) $ map astElem xs) <* infoElem "}"
 
 -- --------------------------------------------------------------------------
 
-blankline = InfoPoint $ do
+blankline = AstElem $ do
   PrettyMode mode _ <- ask
-  let InfoPoint x = if spacing mode && layout mode /= PPNoLayout
+  let AstElem x = if spacing mode && layout mode /= PPNoLayout
       then
-        sepPoint hsep <> sepPoint vcat
+        sepElem hsep <* sepElem vcat
       else
-        sepPoint empty
+        sepElem (pure ())
   x
 
-topLevel dl = Ast $ do
+topLevel :: (Annotated astElem, AstPretty astElem) => [astElem a] -> AstElem [astElem SrcSpanInfo]
+topLevel dl = AstElem $ do
   PrettyMode mode _ <- ask
   case layout mode of
     PPOffsideRule -> do
-      let Ast x = sepPoint vcat <> list (sepPoint myVcat) dl
+      let AstElem x = sepElem vcat *> (intersperse (sepElem myVcat) $ map astElem dl)
       x
     PPSemiColon -> do
-      let Ast x = sepPoint vcat <> prettyBlock dl
+      let AstElem x = sepElem vcat *> (prettyBlock dl)
       x
     PPInLine -> do
-      let Ast x = sepPoint vcat <> prettyBlock dl
+      let AstElem x = sepElem vcat *> (prettyBlock dl)
       x
     PPNoLayout -> do
-      let Ast x = sepPoint hsep <> flatBlock dl
+      let AstElem x = sepElem hsep *> (flatBlock dl)
       x
 
 -- --------------------------------------------------------------------------
@@ -606,7 +568,7 @@ myFsep  = layoutChoice fsep' hsep
       c <- getPos
       case mode style of
         PageMode ->
-          if srcColumn c >= lineLength style - n then line else empty
+          if srcColumn c >= lineLength style - n then line else (pure ())
         _ -> undefined
 
 -- --------------------------------------------------------------------------
@@ -618,13 +580,6 @@ layoutChoice a b  = do
   else b
 
 -- --------------------------------------------------------------------------
--- Prefix something with a LINE pragma, if requested.
--- GHC's LINE pragma actually sets the current line number to n-1, so
--- that the following line is line n.  But if there's no newline before
--- the line we're talking about, we need to compensate by adding 1.
-
-markLine :: DocM ()
-markLine = return () -- not implemented yet
 
 zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
 
@@ -632,6 +587,6 @@ zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
 
 ilist = [Ident undefined "fst", Ident undefined "second"]-- , Ident undefined "third", Ident undefined "four"]
 
-rZero = renderWithMode (PrettyMode PR.defaultMode (Style PageMode 10 1.5)) zeroSt
+renderAst (AstElem x) = renderWithMode (PrettyMode PR.defaultMode (Style PageMode 10 1.5)) zeroSt x
 
-ftst = let Ast x = list (infoPoint "," <> sepPoint hsep ) ilist in rZero x
+exampleList = renderAst $ intersperse (pure ()) (map astElem ilist)
