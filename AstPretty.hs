@@ -121,6 +121,11 @@ infoElem s = AstElem $ do
   s' <- format s
   return (s, [s'])
 
+noInfoElem :: String -> AstElem String
+noInfoElem "" = AstElem $ return ("", [])
+noInfoElem s = AstElem $ do
+  s' <- format s
+  return (s, [])
 sepElem :: DocM() -> AstElem ()
 sepElem s = AstElem $ do
   _ <- s
@@ -145,6 +150,7 @@ annInfoElem a = AstElem $ do
   let ps = if sp == ep then [] else [mkSrcSpan sp ep]
   return $ (a', ps)
 
+constrElem f = pure $ f undefined
 -- --------------------------------------------------------------------------
 
 intersperse :: Applicative f => f a1 -> [f a] -> f [a]
@@ -200,7 +206,7 @@ instance AstPretty Module where
 instance AstPretty ModuleHead where
  -- mySep
   astPretty (ModuleHead _ m mbWarn mbExportList) =
-    resultPretty $ pure (ModuleHead undefined)
+    resultPretty $ constrElem ModuleHead
       <*  infoElem "module"
       <*  sepElem hsep
       <*> prettyNoInfoElem m
@@ -219,36 +225,36 @@ instance AstPretty WarningText where
       (WarnText _ s) -> impl WarnText "{-# WARNING"    s
       where
         -- mySep
-      impl f c s = resultPretty $ pure (f undefined) <* infoElem c <* sepElem hsep <*> infoElem s <* sepElem fsep <* infoElem "#}"
+      impl f c s = resultPretty $ constrElem f <* infoElem c <* sepElem hsep <*> infoElem s <* sepElem fsep <* infoElem "#}"
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ModuleName where
-  astPretty (ModuleName _ s) = resultPretty $ pure (ModuleName undefined) <*> infoElem s
+  astPretty (ModuleName _ s) = resultPretty $ constrElem ModuleName <*> infoElem s
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpecList where
   astPretty (ExportSpecList _ especs) =
-    resultPretty $ pure (ExportSpecList undefined) <*> parenList especs
+    resultPretty $ constrElem ExportSpecList <*> parenList especs
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpec where
 
-  astPretty (EVar _ name) = resultPretty $ pure (EVar undefined) <*> prettyNoInfoElem name
+  astPretty (EVar _ name) = resultPretty $ constrElem EVar <*> prettyNoInfoElem name
 
-  astPretty (EAbs _ name) = resultPretty $ pure (EAbs undefined) <*> prettyNoInfoElem name
+  astPretty (EAbs _ name) = resultPretty $ constrElem EAbs <*> prettyNoInfoElem name
 
   astPretty (EThingAll _ name) =
-    resultPretty $ pure (EThingAll undefined) <*> prettyNoInfoElem name <* infoElem "(..)"
+    resultPretty $ constrElem EThingAll <*> prettyNoInfoElem name <* infoElem "(..)"
 
   astPretty (EThingWith _ name nameList) =
-    resultPretty $ pure (EThingWith undefined)
+    resultPretty $ constrElem EThingWith
       <*> prettyNoInfoElem name
       <*> parenList nameList
 
-  astPretty (EModuleContents _ m) = resultPretty $ pure (EModuleContents undefined) <*> prettyNoInfoElem m
+  astPretty (EModuleContents _ m) = resultPretty $ constrElem EModuleContents <*> prettyNoInfoElem m
 
 -- --------------------------------------------------------------------------
 
@@ -274,25 +280,25 @@ instance AstPretty ImportDecl where
 
 instance AstPretty ImportSpecList where
   astPretty (ImportSpecList _ b ispecs) =
-    resultPretty $ pure (ImportSpecList undefined)
+    resultPretty $ constrElem ImportSpecList
       <*> pure b <* (infoElem $ if b then "hiding" else "")
       <*  sepElem hsep
       <*> parenList ispecs
 
 instance AstPretty ImportSpec where
-  astPretty (IVar _ name)                = resultPretty $ pure (IVar undefined) <*> prettyNoInfoElem name
-  astPretty (IAbs _ name)                = resultPretty $ pure (IAbs undefined) <*> prettyNoInfoElem name
+  astPretty (IVar _ name)                = resultPretty $ constrElem IVar <*> prettyNoInfoElem name
+  astPretty (IAbs _ name)                = resultPretty $ constrElem IAbs <*> prettyNoInfoElem name
   astPretty (IThingAll _ name)           =
-    resultPretty $ pure (IThingAll undefined) <*> prettyNoInfoElem name <* infoElem "(..)"
+    resultPretty $ constrElem IThingAll <*> prettyNoInfoElem name <* infoElem "(..)"
   astPretty (IThingWith _ name nameList) =
-    resultPretty $ pure (IThingWith undefined) <*> prettyNoInfoElem name <*> parenList nameList
+    resultPretty $ constrElem IThingWith <*> prettyNoInfoElem name <*> parenList nameList
 
 
 -------------------------  Declarations ------------------------------
 
 instance AstPretty Decl where
   astPretty (TypeDecl _ head htype) =
-    resultPretty $ pure (TypeDecl undefined)
+    resultPretty $ constrElem TypeDecl
       <* blankline
       -- markLine
       -- mySep
@@ -313,7 +319,7 @@ instance AstPretty DeclHead where astPretty = undefined
 instance AstPretty ModulePragma where
 
   astPretty (LanguagePragma _ ns) =
-    resultPretty $ pure (LanguagePragma undefined)
+    resultPretty $ constrElem LanguagePragma
     -- myFsep
       <* infoElem "{-# LANGUAGE"
       <* sepElem myFsep
@@ -328,7 +334,7 @@ instance AstPretty ModulePragma where
         Nothing -> ""
         Just (UnknownTool u) -> show u
         Just tool -> show tool in
-      resultPretty $ pure (OptionsPragma undefined)
+      resultPretty $ constrElem OptionsPragma
         <*> pure mbTool
         <*  infoElem opt
         <*  sepElem myFsep
@@ -337,7 +343,7 @@ instance AstPretty ModulePragma where
         <*  infoElem "#-}"
 
   astPretty (AnnModulePragma _ ann) =
-    resultPretty $ pure (AnnModulePragma undefined)
+    resultPretty $ constrElem AnnModulePragma
       -- myFsep
       <*   infoElem "{-# ANN"
       <*   sepElem myFsep
@@ -349,14 +355,14 @@ instance AstPretty ModulePragma where
 
 instance AstPretty Annotation where
   astPretty (Ann _ n e) =
-    resultPretty $ pure (Ann undefined)
+    resultPretty $ constrElem Ann
       -- myFsep
       <*> prettyNoInfoElem n
       <*  sepElem myFsep
       <*> prettyNoInfoElem e
 
   astPretty (TypeAnn _ n e) =
-    resultPretty $ pure (TypeAnn undefined)
+    resultPretty $ constrElem TypeAnn
       -- myFsep
       <* infoElem "type"
       <* sepElem myFsep
@@ -365,7 +371,7 @@ instance AstPretty Annotation where
       <*> prettyNoInfoElem e
 
   astPretty (ModuleAnn _ e) =
-    resultPretty $ pure (ModuleAnn undefined)
+    resultPretty $  constrElem ModuleAnn
       -- myFsep
       <* infoElem "module"
       <* sepElem myFsep
@@ -401,7 +407,7 @@ instance AstPretty Type where
   astPrettyPrec p (TyForall _ mtvs ctxt htype) = resultPretty t
     -- parensIf (p > 0) $ myFsep [ppForall mtvs, ppContext ctxt, pretty htype]
     where
-      t = parensIf (p > 0) $ pure (TyForall undefined)
+      t = parensIf (p > 0) $ constrElem TyForall
         -- myFsep
         <*> (traverse (ppForall . map prettyNoInfoElem) mtvs)
         <*  sepElem myFsep
@@ -411,37 +417,37 @@ instance AstPretty Type where
   astPrettyPrec p (TyFun _ a b) = resultPretty t
     -- myFsep [ppBType a, text "->", pretty b]
     where
-      t = parensIf (p > 0) $ pure (TyFun undefined)
+      t = parensIf (p > 0) $ constrElem TyFun
         <*> (annNoInfoElem $ ppBType a)
         <*  sepElem myFsep
         <*  infoElem "->"
         <*  sepElem myFsep
         <*> prettyNoInfoElem b
   astPrettyPrec _ (TyTuple _ bxd l) =
-    resultPretty $ pure (TyTuple undefined)
+    resultPretty $ constrElem TyTuple
       <*> pure bxd
       <*> l'
     where
       l' = case bxd of
         Boxed   -> parenList l
         Unboxed -> hashParenList l
-  astPrettyPrec _ (TyList _ t)  = resultPretty $ pure (TyList undefined) <*> t'
+  astPrettyPrec _ (TyList _ t)  = resultPretty $ constrElem TyList <*> t'
     where t' = enclose (infoElem "[") (infoElem "]") (prettyNoInfoElem t)
   astPrettyPrec  p (TyApp _ a b) = resultPretty t
     -- parensIf (p > prec_btype) $ myFsep [pretty a, ppAType b]
     where
       t = parensIf (p > prec_btype) $
-        pure (TyApp undefined)
+        constrElem TyApp
         <*  sepElem myFsep
         <*> prettyNoInfoElem a
         <*  sepElem myFsep
         <*> (annNoInfoElem $ ppAType a)
         <*   sepElem myFsep
-  astPrettyPrec _ (TyVar _ t)  = resultPretty $ pure (TyVar undefined)  <*> prettyNoInfoElem t
-  astPrettyPrec _ (TyCon _ t)  = resultPretty $ pure (TyCon  undefined) <*> prettyNoInfoElem t
-  astPrettyPrec _ (TyParen _ t)  = resultPretty $ pure (TyParen undefined) <*> t'
+  astPrettyPrec _ (TyVar _ t)  = resultPretty $ constrElem TyVar  <*> prettyNoInfoElem t
+  astPrettyPrec _ (TyCon _ t)  = resultPretty $ constrElem TyCon <*> prettyNoInfoElem t
+  astPrettyPrec _ (TyParen _ t)  = resultPretty $ constrElem TyParen <*> t'
     where t' = enclose (infoElem "(") (infoElem ")") (prettyNoInfoElem t)
-  astPrettyPrec _ (TyInfix _ a op b)  = resultPretty $ pure (TyInfix undefined)
+  astPrettyPrec _ (TyInfix _ a op b)  = resultPretty $ constrElem TyInfix
     -- myFsep [pretty a, ppQNameInfix op, pretty b]
     <*> prettyNoInfoElem a
     <* sepElem myFsep
@@ -451,7 +457,7 @@ instance AstPretty Type where
   astPrettyPrec  _ (TyKind _ t k) = resultPretty t'
     -- parens (myFsep [pretty t, text "::", pretty k])
     where
-      t' = pure (TyKind undefined)
+      t' = constrElem TyKind
         <*  infoElem "("
         <*  sepElem myFsep
         <*> prettyNoInfoElem t
@@ -493,27 +499,27 @@ instance AstPretty IPBind where
 -- --------------------------------------------------------------------------
 
 instance AstPretty  CName where
-  astPretty (VarName _ name) = resultPretty $ pure (VarName undefined) <*> prettyNoInfoElem name
-  astPretty (ConName _ name) = resultPretty $ pure (ConName undefined) <*> prettyNoInfoElem name
+  astPretty (VarName _ name) = resultPretty $ constrElem VarName <*> prettyNoInfoElem name
+  astPretty (ConName _ name) = resultPretty $ constrElem ConName <*> prettyNoInfoElem name
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty SpecialCon where
 
-  astPretty (UnitCon _) = resultPretty $ pure (UnitCon undefined) <* infoElem "()"
-  astPretty (ListCon _) = resultPretty $ pure (ListCon undefined) <* infoElem "[]"
-  astPretty (FunCon _) = resultPretty $ pure  (FunCon undefined)  <* infoElem "->"
+  astPretty (UnitCon _) = resultPretty $ constrElem UnitCon <* infoElem "()"
+  astPretty (ListCon _) = resultPretty $ constrElem ListCon <* infoElem "[]"
+  astPretty (FunCon _) = resultPretty $ constrElem FunCon  <* infoElem "->"
   astPretty (TupleCon _ b n) =
     let
       hash = if b == Unboxed then "#" else ""
       point = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")" in
-    resultPretty $ pure (TupleCon undefined)
+    resultPretty $ constrElem TupleCon
       <* infoElem point
       <*> pure b
       <*> pure n
 
-  astPretty (Cons _) = resultPretty $ pure (Cons undefined) <* infoElem ":"
-  astPretty (UnboxedSingleCon _) = resultPretty $ pure (UnboxedSingleCon undefined) <* infoElem "(# #)"
+  astPretty (Cons _) = resultPretty $ constrElem Cons <* infoElem ":"
+  astPretty (UnboxedSingleCon _) = resultPretty $ constrElem UnboxedSingleCon <* infoElem "(# #)"
 
 -- --------------------------------------------------------------------------
 
@@ -538,9 +544,8 @@ rawQName (Qual _ mn n)  =
     <*  infoElem "."
     <*> rawName n
 rawQName (UnQual _ n) =
-  pure (UnQual undefined) <*> rawName n
-rawQName (Special _ sc) = pure (Special undefined) <*> prettyNoInfoElem sc
-
+  constrElem UnQual <*> rawName n
+rawQName (Special _ sc) = constrElem Special <*> prettyNoInfoElem sc
 ppQNameInfix :: QName a -> AstElem (QName SrcSpanInfo)
 ppQNameInfix name
   | isSymbolName (getName name) = rawQName name
@@ -551,11 +556,11 @@ ppQNameInfix name
 instance AstPretty Name where
   astPretty n@(Ident _ _) = resultPretty $ rawName n
   astPretty (Symbol _ s) =
-    resultPretty $ pure (Symbol undefined)
-      <* infoElem "("
-      <* sepElem hsep
+    resultPretty $ constrElem Symbol
+      <*  infoElem "("
+      <*  sepElem hsep
       <*> infoElem s
-      <* infoElem ")"
+      <*  infoElem ")"
 
 -- --------------------------------------------------------------------------
 
@@ -580,47 +585,47 @@ specialName (Cons _) = ":"
 specialName (UnboxedSingleCon _) = "(# #)"
 
 rawName :: Name t -> AstElem (Name a)
-rawName (Symbol _ s) = pure (Symbol undefined) <*> infoElem s
-rawName (Ident  _ s) = pure (Ident  undefined) <*> infoElem s
+rawName (Symbol _ s) = constrElem Symbol <*> noInfoElem s
+rawName (Ident  _ s) = constrElem Ident <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
 instance AstPretty Context where
-  astPretty (CxEmpty _) = resultPretty $ pure (CxEmpty undefined) <* infoElem "()" <* sepElem hsep <* infoElem "=>"
+  astPretty (CxEmpty _) = resultPretty $ constrElem CxEmpty <* infoElem "()" <* sepElem hsep <* infoElem "=>"
   astPretty (CxSingle _ asst) =
-    resultPretty $ pure (CxSingle undefined)
+    resultPretty $ constrElem CxSingle
       <*> prettyNoInfoElem asst <* sepElem hsep <* infoElem "=>"
   astPretty (CxTuple _ assts) =
-    resultPretty $ pure (CxTuple undefined)
+    resultPretty $ constrElem CxTuple
       <*> parenList assts -- myFsep and parenList -> myFsep and myFsepSimple ???
       <* sepElem myFsep
       <* infoElem "=>"
-  astPretty (CxParen _ asst) = resultPretty $ pure (CxParen undefined) <*> enclose (infoElem "(") (infoElem ")") (prettyNoInfoElem asst)
+  astPretty (CxParen _ asst) = resultPretty $ constrElem CxParen <*> enclose (infoElem "(") (infoElem ")") (prettyNoInfoElem asst)
 
 -- --------------------------------------------------------------------------
 -- hacked for multi-parameter type classes
 instance AstPretty Asst where
   astPretty (ClassA _ a ts)   = -- myFsep $ ppQName a : map ppAType ts
-    resultPretty $ pure (ClassA undefined)
+    resultPretty $ constrElem ClassA
       <*> prettyNoInfoElem a
       <*  sepElem myFsep
       <*> undefined -- (intersperse (sepElem myFsep) $ map (prettyNoInfoElem . ppAType) ts)
   astPretty (InfixA _ a op b) =  -- myFsep $ [pretty a, ppQNameInfix op, pretty b]
-    resultPretty $ pure (InfixA undefined)
+    resultPretty $ constrElem InfixA
       <*> prettyNoInfoElem a
       <*   sepElem myFsep
       <*> ppQNameInfix op
       <*   sepElem myFsep
       <*> prettyNoInfoElem b
   astPretty (IParam _ i t)    = -- myFsep $ [pretty i, text "::", pretty t]
-    resultPretty $ pure (IParam undefined)
+    resultPretty $ constrElem IParam
       <*> prettyInfoElem i
       <*  sepElem myFsep
       <*  infoElem "::"
       <*> prettyInfoElem t
 
   astPretty (EqualP _ t1 t2)  = -- myFsep $ [pretty t1, text "~", pretty t2]
-    resultPretty $ pure (EqualP undefined)
+    resultPretty $ constrElem EqualP
       <*> prettyInfoElem t1
       <*   sepElem myFsep
       <*   infoElem "~"
