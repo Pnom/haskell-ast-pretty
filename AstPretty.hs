@@ -99,8 +99,8 @@ instance Applicative AstElem where
   pure a = AstElem $ return (a, [])
 
   (<*>) (AstElem f) (AstElem a) = AstElem $ do
-    (a', p) <- a
     (f', ps) <- f
+    (a', p) <- a
     return (f' a', ps ++ p)
 
   (*>) (AstElem a) (AstElem b) = AstElem $ do
