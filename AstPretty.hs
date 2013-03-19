@@ -126,6 +126,7 @@ noInfoElem "" = AstElem $ return ("", [])
 noInfoElem s = AstElem $ do
   s' <- format s
   return (s, [])
+
 sepElem :: DocM() -> AstElem ()
 sepElem s = AstElem $ do
   _ <- s
@@ -151,11 +152,12 @@ annInfoElem a = AstElem $ do
   return $ (a', ps)
 
 constrElem f = pure $ f undefined
+
 -- --------------------------------------------------------------------------
 
 intersperse :: Applicative f => f a1 -> [f a] -> f [a]
 intersperse _ [] = pure []
-intersperse sep (e:es) = (:) <$> e <*> (sequenceA $ map (sep *>) es)
+intersperse sep (e:es) = sequenceA $ e : (map (sep *>) es)
 
 -- --------------------------------------------------------------------------
 
@@ -165,7 +167,6 @@ resultPretty (AstElem a) = do
   (a', ps) <- a
   ep <- getPos
   let span = SrcSpanInfo (mkSrcSpan sp ep) ps
-
   return $ amap (const span) a'
 
 -- --------------------------------------------------------------------------
@@ -310,9 +311,54 @@ instance AstPretty Decl where
       <* sepElem fsep
       <*> prettyNoInfoElem htype
 
-  astPretty _ = undefined
+  astPretty (TypeFamDecl _ head mkind) = undefined
+  astPretty (DataDecl _ dataOrNew mContext head qConDecl mDeriving) = undefined
+  astPretty (GDataDecl _ dataOrNew mContext head mkind gadtDecl mDeriving) = undefined
+  astPretty (DataFamDecl _ mContext head mKind) = undefined
+  astPretty (TypeInsDecl _ tl tr) = undefined
+  astPretty (DataInsDecl _ dataOrNew t qConDecl mDeriving) = undefined
+  astPretty (GDataInsDecl _ dataOrNew t mKind gadtDecl mDeriving) = undefined
+  astPretty (ClassDecl _ mContext head funDep mClassDecl) = undefined
+  astPretty (InstDecl _ mContext instHead mInstDecl) = undefined
+  astPretty (DerivDecl _ mContext instHead) = undefined
+  astPretty (InfixDecl _ assoc mInt op) = undefined
+  astPretty (DefaultDecl _ t) = undefined
+  astPretty (SpliceDecl _ e) = undefined
+  astPretty (TypeSig _ ns t) = undefined
+  astPretty (FunBind _ ms) = undefined
+  astPretty (PatBind _ pat mType rhs mBinds) = undefined
+  astPretty (ForImp _ callConv mSafety mStr n t) = undefined
+  astPretty (ForExp _ callConv mStr n t) = undefined
+  astPretty (RulePragmaDecl _ rs) = undefined
+  astPretty (DeprPragmaDecl _ ds) = undefined
+  astPretty (WarnPragmaDecl _ ws) = undefined
+  astPretty (InlineSig _ b mActivation qName) = undefined
+  astPretty (InlineConlikeSig _ mActivation qName) = undefined
+  astPretty (SpecSig _ qb ts) = undefined
+  astPretty (SpecInlineSig _ b mActivation qn ts) = undefined
+  astPretty (InstSig _ mContext instHead ) = undefined
+  astPretty (AnnPragma _ annotation) = undefined
 
-instance AstPretty DeclHead where astPretty = undefined
+instance AstPretty DeclHead where
+  astPretty (DHead _ n tvs) =
+    -- mySep (pretty n : map pretty tvs)
+    resultPretty $ constrElem DHead
+      <*> prettyInfoElem n
+      <*  sepElem hsep
+      <*> intersperse (sepElem fsep) (map prettyNoInfoElem tvs)
+
+  astPretty (DHInfix _ tva n tvb) =
+    -- mySep [pretty tva, pretty n, pretty tvb]
+    resultPretty $ constrElem DHInfix
+      <*> prettyInfoElem tva
+      <* sepElem hsep
+      <*> prettyInfoElem n
+      <* sepElem fsep
+      <*> prettyInfoElem tvb
+
+  astPretty (DHParen _ dh)        =
+    -- parens (pretty dh)
+    resultPretty $ constrElem DHParen <* infoElem "(" <*> prettyNoInfoElem dh <* infoElem ")"
 
 ------------------------- Pragmas ---------------------------------------
 
