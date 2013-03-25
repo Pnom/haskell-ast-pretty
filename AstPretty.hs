@@ -781,25 +781,47 @@ instance AstPretty Assoc where
 -- --------------------------------------------------------------------------
 
 instance AstPretty Match where
-  astPretty m = undefined
-{-
 
-        pretty (Match pos f ps optsig rhs whereBinds) =
-                markLine pos $
-                myFsep (lhs ++ [maybePP ppSig optsig, pretty rhs])
-                $$$ ppWhere whereBinds
-            where
-                lhs = case ps of
-                        l:r:ps' | isSymbolName f ->
-                                let hd = [pretty l, ppName f, pretty r] in
-                                if null ps' then hd
-                                else parens (myFsep hd) : map (prettyPrec 2) ps'
-                        _ -> pretty f : map (prettyPrec 2) ps
-sMatch (Match l n ps rhs mwhere) =
-    S.Match (getPointLoc l) (sName n) (map sPat ps) Nothing (sRhs rhs) (maybe (S.BDecls []) sBinds mwhere)
-sMatch (InfixMatch l pa n pbs rhs mwhere) =
-    S.Match (getPointLoc l) (sName n) (map sPat (pa:pbs)) Nothing (sRhs rhs) (maybe (S.BDecls []) sBinds mwhere)
--}
+  astPretty m =
+    case m of
+      (InfixMatch _ pa n pbs rhs mWhere) -> res hd rhs mWhere
+        where
+          (n', l':pbs') = lhs n (pa:pbs)
+          hd = constrElem InfixMatch
+            <*> l'
+            <*  sepElem myFsep
+            <*> n'
+            <*  sepElem myFsep
+            <*> intersperse (sepElem myFsep) pbs'
+
+      (Match _ n pbs rhs mWhere) -> res hd rhs mWhere
+        where
+          (n', pbs') = lhs n pbs
+          hd = constrElem Match
+            <*> n'
+            <*  sepElem myFsep
+            <*> intersperse (sepElem myFsep) pbs'
+    where
+      lhs n pbs = case pbs of
+        l:r:pbs' | isSymbolName n ->
+          let
+            op  = infoElem $ if null pbs' then "" else "("
+            cp  = infoElem $ if null pbs' then "" else ")"
+            l'   = op *> prettyInfoElem l
+            r'   = cp *> prettyInfoElem r
+            n'   = ppName n
+          in l' `seq` n' `seq` r' `seq` (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
+        _ -> let
+          n'   = prettyInfoElem n
+          pbs' = map (annNoInfoElem.astPrettyPrec 2) pbs
+          in n' `seq` pbs' `seq` (n', pbs')
+      res f rhs mWhere = resultPretty $ f
+        <*  sepElem myFsep
+        <*> prettyInfoElem rhs
+        <*  sepElem myVcat -- same as $$$ in original pretty
+        <*> traverse ppWhere mWhere
+
+
 
 
 ppWhere (BDecls  _ []) = constrElem BDecls  <*> pure []
