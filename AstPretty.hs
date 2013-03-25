@@ -1128,7 +1128,68 @@ instance AstPretty Literal where
 
 -- --------------------------------------------------------------------------
 
-instance AstPretty Exp    where astPretty = undefined
+instance AstPretty Exp where
+
+  astPrettyPrec _ (Lit _ l) = undefined
+  -- lambda stuff
+  astPrettyPrec p (InfixApp _ a op b) = undefined
+  astPrettyPrec p (NegApp _ e) = undefined
+  astPrettyPrec p (App _ a b) = undefined
+  astPrettyPrec p (Lambda _ patList ppBody) = undefined
+  -- keywords
+  -- two cases for lets
+  astPrettyPrec p (Let _ (BDecls _ declList) letBody) = undefined
+  astPrettyPrec p (Let _ (IPBinds _ bindList) letBody) = undefined
+
+  astPrettyPrec p (If _ cond thenexp elsexp) = undefined
+  astPrettyPrec p (Case _ cond altList) = undefined
+  astPrettyPrec p (Do _ stmtList) = undefined
+  astPrettyPrec p (MDo _ stmtList) = undefined
+  -- Constructors & Vars
+  astPrettyPrec _ (Var _ name) = undefined
+  astPrettyPrec _ (IPVar _ ipname) = undefined
+  astPrettyPrec _ (Con _ name) = undefined
+  astPrettyPrec _ (Tuple _ expList) = undefined
+  astPrettyPrec _ (TupleSection _ mExpList) = undefined
+  -- weird stuff
+  astPrettyPrec _ (Paren _ e) = undefined
+  astPrettyPrec _ (LeftSection _ e op) = undefined
+  astPrettyPrec _ (RightSection _ op e) = undefined
+  astPrettyPrec _ (RecConstr _ c fieldList) = undefined
+  astPrettyPrec _ (RecUpdate _ e fieldList) = undefined
+  -- Lists
+  astPrettyPrec _ (List _ list) = undefined
+  astPrettyPrec _ (EnumFrom _ e) = undefined
+  astPrettyPrec _ (EnumFromTo _ from to) = undefined
+  astPrettyPrec _ (EnumFromThen _ from thenE) = undefined
+  astPrettyPrec _ (EnumFromThenTo _ from thenE to) = undefined
+  astPrettyPrec _ (ListComp _ e qualList) = undefined
+  astPrettyPrec _ (ParComp _ e qualLists) = undefined
+  astPrettyPrec p (ExpTypeSig _ e ty) =  undefined
+  -- Template Haskell
+  astPrettyPrec _ (BracketExp _ b) = undefined
+  astPrettyPrec _ (SpliceExp _ s) = undefined
+  astPrettyPrec _ (TypQuote _ t)  = undefined
+  astPrettyPrec _ (VarQuote _ x)  = undefined
+  astPrettyPrec _ (QuasiQuote _ n qt) = undefined
+  -- Hsx
+  astPrettyPrec _ (XTag _ n attrs mattr cs) = undefined
+  astPrettyPrec _ (XETag _ n attrs mattr) = undefined
+  astPrettyPrec _ (XPcdata _ s) = undefined
+  astPrettyPrec _ (XExpTag _ e) = undefined
+  astPrettyPrec _ (XChildTag _ cs) = undefined
+
+  -- Pragmas
+  astPrettyPrec p (CorePragma _ s e) = undefined
+  astPrettyPrec _ (SCCPragma  _ s e) = undefined
+  astPrettyPrec _ (GenPragma  _ s (a,b) (c,d) e) = undefined
+  -- Arrows
+  astPrettyPrec p (Proc _ pat e) =  undefined
+  astPrettyPrec p (LeftArrApp _ l r)      = undefined
+  astPrettyPrec p (RightArrApp _ l r)     = undefined
+  astPrettyPrec p (LeftArrHighApp _ l r)  = undefined
+  astPrettyPrec p (RightArrHighApp _ l r) = undefined
+
 instance AstPretty IPName where astPretty = undefined
 instance AstPretty IPBind where astPretty = undefined
 
