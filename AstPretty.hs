@@ -143,8 +143,8 @@ annInfoElem a = AstElem $ do
 
 constrElem f = pure $ f undefined
 
-infoList xs = infoList xs
-noInfoList xs = noInfoList xs
+infoList xs = map prettyInfoElem xs
+noInfoList xs = map prettyNoInfoElem xs
 
 -- --------------------------------------------------------------------------
 
@@ -1133,29 +1133,72 @@ instance AstPretty Literal where
 
 instance AstPretty Exp where
 
-  astPrettyPrec _ (Lit _ l) = undefined
+  astPrettyPrec _ (Lit _ l) = resultPretty $ constrElem Lit <*> prettyInfoElem l
   -- lambda stuff
-  astPrettyPrec p (InfixApp _ a op b) = undefined
-  astPrettyPrec p (NegApp _ e) = undefined
-  astPrettyPrec p (App _ a b) = undefined
-  astPrettyPrec p (Lambda _ patList ppBody) = undefined
+  astPrettyPrec p (InfixApp _ a op b) = resultPretty $ constrElem InfixApp
+    <*> prettyInfoElem a
+    <*  sepElem myFsep
+    <*> prettyInfoElem op
+    <*  sepElem myFsep
+    <*> prettyInfoElem b
+  astPrettyPrec p (NegApp _ e) = resultPretty $ constrElem NegApp
+    <*  infoElem "-"
+    <*  sepElem myFsep
+    <*> prettyInfoElem e
+  astPrettyPrec p (App _ a b) = resultPretty $ constrElem App
+    <*> prettyInfoElem a
+    <*  sepElem myFsep
+    <*> prettyInfoElem b
+  astPrettyPrec p (Lambda _ expList body) = resultPretty $ constrElem Lambda
+    <*  infoElem "\\"
+    <*  sepElem myFsep
+    <*> intersperse (sepElem myFsep) (noInfoList expList)
+    <*  sepElem myFsep
+    <*  infoElem "->"
+    <*> prettyInfoElem body
+
   -- keywords
   -- two cases for lets
-  astPrettyPrec p (Let _ (BDecls _ declList) letBody) = undefined
-  astPrettyPrec p (Let _ (IPBinds _ bindList) letBody) = undefined
-
-  astPrettyPrec p (If _ cond thenexp elsexp) = undefined
-  astPrettyPrec p (Case _ cond altList) = undefined
-  astPrettyPrec p (Do _ stmtList) = undefined
-  astPrettyPrec p (MDo _ stmtList) = undefined
+  astPrettyPrec p (Let _ (BDecls _ declList) letBody)  = resultPretty $ ppLetExp BDecls  declList letBody
+  astPrettyPrec p (Let _ (IPBinds _ bindList) letBody) = resultPretty $ ppLetExp IPBinds bindList letBody
+  astPrettyPrec p (If _ cond thenexp elsexp) = resultPretty $ constrElem If
+    <*  infoElem "if"
+    <*  sepElem myFsep
+    <*> prettyInfoElem cond
+    <*  sepElem myFsep
+    <*  infoElem "then"
+    <*  sepElem myFsep
+    <*> prettyInfoElem thenexp
+    <*  infoElem "else"
+    <*  sepElem myFsep
+    <*> prettyInfoElem elsexp
+  astPrettyPrec p (Case _ cond altList) = resultPretty $ constrElem Case
+    <*  infoElem "case"
+    <*  sepElem myFsep
+    <*> prettyInfoElem cond
+    <*  sepElem myFsep
+    <*  infoElem "of"
+    <*  sepElem myVcat
+    <*> ppBody caseIndent (noInfoList altList)
+  astPrettyPrec p (Do _ stmtList) = resultPretty $ constrElem Do
+    <*  infoElem "do"
+    <*  sepElem myVcat
+    <*> ppBody doIndent (noInfoList stmtList)
+  astPrettyPrec p (MDo _ stmtList) = resultPretty $ constrElem MDo
+    <*  infoElem "mdo"
+    <*  sepElem myVcat
+    <*> ppBody doIndent (noInfoList stmtList)
   -- Constructors & Vars
-  astPrettyPrec _ (Var _ name) = undefined
-  astPrettyPrec _ (IPVar _ ipname) = undefined
-  astPrettyPrec _ (Con _ name) = undefined
-  astPrettyPrec _ (Tuple _ expList) = undefined
-  astPrettyPrec _ (TupleSection _ mExpList) = undefined
+  astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> prettyInfoElem name
+  astPrettyPrec _ (IPVar _ ipname) = resultPretty $ constrElem IPVar <*> prettyInfoElem ipname
+  astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> prettyInfoElem name
+--  astPrettyPrec _ (Tuple _ expList) = undefined
+  astPrettyPrec _ (TupleSection _ mExpList) = resultPretty $ constrElem TupleSection
+    <*> parenList (map (traverse prettyNoInfoElem) mExpList)
+
   -- weird stuff
-  astPrettyPrec _ (Paren _ e) = undefined
+  astPrettyPrec _ (Paren _ e) = resultPretty $ constrElem Paren <*> paren (prettyInfoElem e)
+
   astPrettyPrec _ (LeftSection _ e op) = undefined
   astPrettyPrec _ (RightSection _ op e) = undefined
   astPrettyPrec _ (RecConstr _ c fieldList) = undefined
@@ -1216,6 +1259,21 @@ instance AstPretty XName where
       <*> infoElem d
       <*  infoElem ":"
       <*> infoElem n
+
+ppLetExp f l b = constrElem Let
+  <*  infoElem "let"
+  <*  sepElem hsep
+  <*> (constrElem f <*> ppBody letIndent (noInfoList l))
+  <*  sepElem myFsep
+  <*  infoElem "in"
+  <*> prettyInfoElem b
+
+ppWith f binds = f
+  <*  (sepElem $ nest 2)
+  <*  infoElem "with"
+  <*  sepElem myVcat
+  <*> ppBody withIndent (noInfoList binds)
+withIndent = whereIndent
 
 --------------------- Template Haskell -------------------------
 
