@@ -7,7 +7,7 @@ module AstPretty ( AstPretty(astPretty),
   parenList, braceList
   ) where
 
-import Language.Haskell.Exts.Annotated hiding (paren)
+import Language.Haskell.Exts.Annotated
 import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
 import Control.Monad.Reader
@@ -683,7 +683,7 @@ instance AstPretty DeclHead where
 
   astPretty (DHParen _ dh)        =
     -- parens (pretty dh)
-    resultPretty.paren $ constrElem DHParen <*> prettyNoInfoElem dh
+    resultPretty.parens $ constrElem DHParen <*> prettyNoInfoElem dh
 
 -- --------------------------------------------------------------------------
 
@@ -703,7 +703,7 @@ instance AstPretty InstHead where
       <*  sepElem fsep
       <*> prettyInfoElem tb
   astPretty (IHParen _ ih) =
-    resultPretty.paren $ constrElem IHParen <*> prettyInfoElem ih
+    resultPretty.parens $ constrElem IHParen <*> prettyInfoElem ih
 
 ------------------------- Pragmas ---------------------------------------
 
@@ -858,7 +858,7 @@ instance AstPretty Activation where
 instance AstPretty RuleVar where
     astPretty (RuleVar _ n) = resultPretty $ constrElem RuleVar <*> prettyInfoElem n
     astPretty (TypedRuleVar _ n t) =
-      resultPretty.paren $ constrElem TypedRuleVar
+      resultPretty.parens $ constrElem TypedRuleVar
         <*  sepElem hsep
         <*> prettyInfoElem n
         <*  sepElem fsep
@@ -1030,7 +1030,7 @@ instance AstPretty Type where
   astPrettyPrec  _ (TyKind _ t k) = resultPretty t'
     -- parens (myFsep [pretty t, text "::", pretty k])
     where
-      t' = paren $ constrElem TyKind
+      t' = parens $ constrElem TyKind
         -- myFsep
         <*  sepElem myFsep
         <*> prettyNoInfoElem t
@@ -1043,7 +1043,7 @@ instance AstPretty Type where
 
 instance AstPretty TyVarBind where
   astPretty (KindedVar _ var kind) =
-    resultPretty.paren $ constrElem KindedVar
+    resultPretty.parens $ constrElem KindedVar
       -- myFsep
       <*  sepElem myFsep
       <*> prettyInfoElem var
@@ -1073,7 +1073,7 @@ instance AstPretty Kind where
       <*> prettyInfoElem b
 
   astPrettyPrec _ (KindParen _ k) =
-    resultPretty.paren $ constrElem KindParen <*> prettyInfoElem k
+    resultPretty.parens $ constrElem KindParen <*> prettyInfoElem k
   astPrettyPrec _ (KindVar _ n) = resultPretty $ constrElem KindVar <*> prettyInfoElem n
 
 ppOptKind :: Maybe (Kind a) -> AstElem (Maybe (Kind SrcSpanInfo))
@@ -1208,14 +1208,14 @@ instance AstPretty Exp where
     <*> parenList (map (traverse prettyNoInfoElem) mExpList)
 
   -- weird stuff
-  astPrettyPrec _ (Paren _ e) = resultPretty.paren $ constrElem Paren <*> prettyInfoElem e
+  astPrettyPrec _ (Paren _ e) = resultPretty.parens $ constrElem Paren <*> prettyInfoElem e
   astPrettyPrec _ (LeftSection _ e op) =
-    resultPretty.paren $ constrElem LeftSection
+    resultPretty.parens $ constrElem LeftSection
       <*> prettyInfoElem e
       <*  sepElem hsep
       <*> prettyInfoElem op
   astPrettyPrec _ (RightSection _ op e) =
-    resultPretty.paren $ constrElem RightSection
+    resultPretty.parens $ constrElem RightSection
       <*> prettyInfoElem op
       <*  sepElem hsep
       <*> prettyInfoElem e
@@ -1226,7 +1226,7 @@ instance AstPretty Exp where
 
   -- Lists
   astPrettyPrec _ (List _ list) =  resultPretty $ constrElem List
-     <*> bracket (intersperse (infoElem "," <* sepElem myFsepSimple) $ map prettyNoInfoElem list)
+     <*> brackets (intersperse (infoElem "," <* sepElem myFsepSimple) $ map prettyNoInfoElem list)
   astPrettyPrec _ (EnumFrom _ e) =
     resultPretty $ constrElem EnumFrom
       <*  infoElem "["
@@ -1652,7 +1652,7 @@ instance AstPretty Op where astPretty = undefined
 instance AstPretty Name where
   astPretty n@(Ident _ _) = resultPretty $ ppName n
   astPretty (Symbol _ s) =
-    resultPretty.paren $ constrElem Symbol
+    resultPretty.parens $ constrElem Symbol
       <*  sepElem hsep
       <*> infoElem s
 
@@ -1699,7 +1699,7 @@ instance AstPretty Context where
 ppContext :: Maybe (Context a) -> AstElem (Maybe (Context SrcSpanInfo))
 ppContext context = traverse impl context
   where
-    impl c = (paren $ prettyInfoElem c)
+    impl c = (parens $ prettyInfoElem c)
       <*  sepElem hsep
       <*  infoElem "=>"
 
@@ -1765,30 +1765,30 @@ parenListSep :: AstElem String
 parenListSep = infoElem "," <* sepElem myFsepSimple
 
 parenList :: [AstElem a] -> AstElem [a]
-parenList xs =  paren $ intersperse parenListSep xs
+parenList xs =  parens $ intersperse parenListSep xs
 
 hashParenList :: [AstElem a] -> AstElem [a]
 hashParenList xs = infoElem "(#" *> intersperse parenListSep xs <* infoElem "#)"
 
 braceList :: [AstElem a] -> AstElem [a]
-braceList xs = brace $ intersperse parenListSep xs
+braceList xs = braces $ intersperse parenListSep xs
 
 bracketList :: [AstElem a] -> AstElem [a]
-bracketList xs = bracket $ intersperse (sepElem myFsepSimple) xs
+bracketList xs = brackets $ intersperse (sepElem myFsepSimple) xs
 
 enclose ob cb x = ob *> x <* cb
 
-paren :: AstElem a -> AstElem a
-paren d = infoElem "(" *> d <* infoElem ")"
+parens :: AstElem a -> AstElem a
+parens d = infoElem "(" *> d <* infoElem ")"
 
-brace :: AstElem a -> AstElem a
-brace d = infoElem "{" *> d <* infoElem "}"
+braces :: AstElem a -> AstElem a
+braces d = infoElem "{" *> d <* infoElem "}"
 
-bracket :: AstElem a -> AstElem a
-bracket d = infoElem "[" *> d <* infoElem "]"
+brackets :: AstElem a -> AstElem a
+brackets d = infoElem "[" *> d <* infoElem "]"
 
 parensIf :: Bool -> AstElem a -> AstElem a
-parensIf p d = if p then paren d else d
+parensIf p d = if p then parens d else d
 
 -- --------------------------------------------------------------------------
 -- Wrap in braces and semicolons, with an extra space at the start in
@@ -1916,6 +1916,7 @@ renderAst (AstElem x) = renderWithMode (PrettyMode PR.defaultMode (Style PageMod
 
 exampleList = renderAst $ intersperse (pure ()) (noInfoList ilist)
 
+p = Paren undefined $ Var undefined $ UnQual undefined $ Ident undefined "id"
 
 
 
