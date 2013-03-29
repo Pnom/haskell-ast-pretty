@@ -51,9 +51,6 @@ class AstPretty ast where
   astPretty = astPrettyPrec 0
   astPrettyPrec _ = astPretty
 
----------------------------------------------------------------------
--- Annotated version
-
 -------------------------  Pretty-Print a Module --------------------
 
 instance AstPretty Module where
@@ -110,19 +107,14 @@ instance AstPretty ExportSpecList where
 -- --------------------------------------------------------------------------
 
 instance AstPretty ExportSpec where
-
   astPretty (EVar _ name) = resultPretty $ constrElem EVar <*> prettyNoInfoElem name
-
   astPretty (EAbs _ name) = resultPretty $ constrElem EAbs <*> prettyNoInfoElem name
-
   astPretty (EThingAll _ name) =
     resultPretty $ constrElem EThingAll <*> prettyNoInfoElem name <* infoElem "(..)"
-
   astPretty (EThingWith _ name nameList) =
     resultPretty $ constrElem EThingWith
       <*> prettyNoInfoElem name
       <*> parenList (noInfoList nameList)
-
   astPretty (EModuleContents _ m) = resultPretty $ constrElem EModuleContents <*> prettyNoInfoElem m
 
 -- --------------------------------------------------------------------------
@@ -179,7 +171,6 @@ instance AstPretty Decl where
       <* infoElem "="
       <* sepElem fsep
       <*> prettyInfoElem htype
-
   astPretty (TypeFamDecl _ head mkind) =
     resultPretty $ constrElem TypeFamDecl
       <* blankline
@@ -191,7 +182,6 @@ instance AstPretty Decl where
       <*> ppFsepDhead head
       <* sepElem fsep
       <*> ppOptKind mkind
-
   astPretty (DataDecl _ don mContext head constrList mDeriving) =
     resultPretty $ constrElem DataDecl
     <* blankline
@@ -206,7 +196,6 @@ instance AstPretty Decl where
     -- $$$ is the same as myVcat
     <*  sepElem myVcat
     <*> traverse ppDeriving mDeriving
-
   astPretty (GDataDecl _ don mContext head mkind gadtDecl mDeriving) =
     resultPretty $ constrElem GDataDecl
       <* blankline
@@ -230,7 +219,6 @@ instance AstPretty Decl where
         let AstElem xs = ppBody letIndent [ppDeriving d]
         ([x], ps) <- xs
         return (x, ps)
-
   astPretty (DataFamDecl _ mContext head mKind) =
     resultPretty $ constrElem DataFamDecl
       <* blankline
@@ -244,7 +232,6 @@ instance AstPretty Decl where
       <*> ppFsepDhead head
       <*  sepElem fsep
       <*> ppOptKind mKind
-
   astPretty (TypeInsDecl _ tl tr) =
     resultPretty $ constrElem TypeInsDecl
       <* blankline
@@ -258,7 +245,6 @@ instance AstPretty Decl where
       <*  infoElem "="
       <*  sepElem fsep
       <*> prettyInfoElem tr
-
   astPretty (DataInsDecl _ don t qConDecl mDeriving) =
     resultPretty $ constrElem DataInsDecl
       <* blankline
@@ -273,7 +259,6 @@ instance AstPretty Decl where
       -- $$$ is the same as myVcat
       <*  sepElem myVcat
       <*> traverse ppDeriving mDeriving
-
   astPretty (GDataInsDecl _ don t mKind gadtDecl mDeriving) =
     resultPretty $ constrElem GDataInsDecl
       <* blankline
@@ -290,7 +275,6 @@ instance AstPretty Decl where
       <*> ppBody classIndent (noInfoList gadtDecl)
       <*  sepElem myVcat
       <*> traverse ppDeriving mDeriving
-
   astPretty (ClassDecl _ mContext head funDep mClassDecl) =
     resultPretty $ constrElem ClassDecl
       <* blankline
@@ -307,7 +291,6 @@ instance AstPretty Decl where
       cDecl cd = case cd of
         [] -> pure []
         cs -> sepElem fsep *> infoElem "where" *> sepElem myVcat *> ppBody classIndent (noInfoList cs)
-
   astPretty (InstDecl _ mContext instHead mInstDecl) =
     resultPretty $ constrElem InstDecl
       <* blankline
@@ -323,7 +306,6 @@ instance AstPretty Decl where
       instDecl i =  case i of
         [] -> pure []
         is -> sepElem fsep *> infoElem "where" *> sepElem myVcat *> ppBody classIndent (noInfoList is)
-
   astPretty (DerivDecl _ mContext instHead) =
     resultPretty $ constrElem DerivDecl
       <* blankline
@@ -335,7 +317,6 @@ instance AstPretty Decl where
       <*> ppContext mContext
       <* sepElem fsep
       <*> ppInstHeadInDecl instHead
-
   astPretty (InfixDecl _ assoc mInt op) =
     resultPretty $ constrElem InfixDecl
       <* blankline
@@ -344,19 +325,16 @@ instance AstPretty Decl where
       <*  sepElem hsep
       <*> traverseSep (sepElem fsep) (\i -> (infoElem $ show i) *> pure i) mInt
       <*> intersperse (sepElem fsep) (infoList op)
-
   astPretty (DefaultDecl _ t) =
     resultPretty $ constrElem DefaultDecl
       <*  blankline
       <*  infoElem "default"
       <*  sepElem hsep
       <*> parenList (noInfoList t)
-
   astPretty (SpliceDecl _ e) =
     resultPretty $ constrElem SpliceDecl
       <*  blankline
       <*> prettyInfoElem e
-
   astPretty (TypeSig _ ns t) =
     resultPretty $ constrElem TypeSig
       <*  blankline
@@ -365,7 +343,6 @@ instance AstPretty Decl where
       <*  (sepElem $ case ns of [n] -> hsep; _ -> fsep)
       <*  infoElem "::"
       <*> prettyInfoElem t
-
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
       <*> intersperse sep (noInfoList ms)
@@ -509,7 +486,6 @@ instance AstPretty Decl where
       <*  sepElem fsep
       <*  infoElem "#-}"
 
-
 ppConstrList :: AstPretty ast => [ast a] -> AstElem [ast SrcSpanInfo]
 ppConstrList [] = sequenceA []
 ppConstrList cs = sepElem hsep
@@ -553,7 +529,6 @@ instance AstPretty DeclHead where
       <*> prettyInfoElem n
       <*  sepElem hsep
       <*> intersperse (sepElem fsep) (noInfoList tvs)
-
   astPretty (DHInfix _ tva n tvb) =
     -- mySep [pretty tva, pretty n, pretty tvb]
     resultPretty $ constrElem DHInfix
@@ -562,7 +537,6 @@ instance AstPretty DeclHead where
       <*> prettyInfoElem n
       <* sepElem fsep
       <*> prettyInfoElem tvb
-
   astPretty (DHParen _ dh)        =
     -- parens (pretty dh)
     resultPretty.parens $ constrElem DHParen <*> prettyNoInfoElem dh
@@ -603,7 +577,6 @@ instance AstPretty Assoc where
 -- --------------------------------------------------------------------------
 
 instance AstPretty Match where
-
   astPretty m =
     case m of
       (InfixMatch _ pa n pbs rhs mWhere) -> res hd rhs mWhere
@@ -615,7 +588,6 @@ instance AstPretty Match where
             <*> n'
             <*  sepElem myFsep
             <*> intersperse (sepElem myFsep) pbs'
-
       (Match _ n pbs rhs mWhere) -> res hd rhs mWhere
         where
           (n', pbs') = lhs n pbs
@@ -818,7 +790,6 @@ instance AstPretty Annotation where
       <*> prettyNoInfoElem n
       <*  sepElem myFsep
       <*> prettyNoInfoElem e
-
   astPretty (TypeAnn _ n e) =
     resultPretty $ constrElem TypeAnn
       -- myFsep
@@ -827,7 +798,6 @@ instance AstPretty Annotation where
       <*> prettyNoInfoElem n
       <* sepElem myFsep
       <*> prettyNoInfoElem e
-
   astPretty (ModuleAnn _ e) =
     resultPretty $ constrElem ModuleAnn
       -- myFsep
@@ -897,9 +867,7 @@ instance AstPretty BangType where
     resultPretty $ constrElem BangedTy
       <*  infoElem "!"
       <*> (annInfoElem $ ppAType ty)
-
   astPrettyPrec p (UnBangedTy _ ty) = resultPretty $ constrElem UnBangedTy <*> (annInfoElem $ ppType p ty)
-
   astPrettyPrec p (UnpackedTy _ ty) =
     resultPretty $ constrElem UnpackedTy
       <*  infoElem "{-# UNPACK #-}"
@@ -925,15 +893,12 @@ ppDeriving (Deriving _ is) = infoElem "deriving"
   *> (parensIf useParen $ constrElem Deriving <*> sequenceA ppIheads)
   where
     iheads = map sInstHead is
-
     useParen = case iheads of
       [(qn, [])] -> False
       _ -> True
-
     ppIheads = case iheads of
       [(qn, [])] -> [constrElem IHead <*> prettyNoInfoElem qn <*> pure []]
       _ -> map ppDer iheads
-
     ppDer (qn, ts) = constrElem IHead
       -- mySep
       <*> prettyNoInfoElem qn
@@ -1052,7 +1017,6 @@ instance AstPretty Kind where
       <*  infoElem "->"
       <*  sepElem myFsep
       <*> prettyInfoElem b
-
   astPrettyPrec _ (KindParen _ k) =
     resultPretty.parens $ constrElem KindParen <*> prettyInfoElem k
   astPrettyPrec _ (KindVar _ n) = resultPretty $ constrElem KindVar <*> prettyInfoElem n
@@ -1123,7 +1087,6 @@ instance AstPretty Literal where
 -- --------------------------------------------------------------------------
 
 instance AstPretty Exp where
-
   astPrettyPrec _ (Lit _ l) = resultPretty $ constrElem Lit <*> prettyInfoElem l
   -- lambda stuff
   astPrettyPrec p (InfixApp _ a op b) = resultPretty . parensIf (p > 2) $
@@ -1150,7 +1113,6 @@ instance AstPretty Exp where
       <*  sepElem myFsep
       <*  infoElem "->"
       <*> prettyInfoElem body
-
   -- keywords
   -- two cases for lets
   astPrettyPrec p (Let _ (BDecls _ declList) letBody)  =
@@ -1188,7 +1150,6 @@ instance AstPretty Exp where
       <*  infoElem "mdo"
       <*  sepElem myVcat
       <*> ppBody doIndent (noInfoList stmtList)
-
   -- Constructors & Vars
   astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> prettyInfoElem name
   astPrettyPrec _ (IPVar _ ipname) = resultPretty $ constrElem IPVar <*> prettyInfoElem ipname
@@ -1197,7 +1158,6 @@ instance AstPretty Exp where
     <*> parenList (noInfoList expList)
   astPrettyPrec _ (TupleSection _ mExpList) = resultPretty $ constrElem TupleSection
     <*> parenList (map (traverse prettyNoInfoElem) mExpList)
-
   -- weird stuff
   astPrettyPrec _ (Paren _ e) = resultPretty.parens $ constrElem Paren <*> prettyInfoElem e
   astPrettyPrec _ (LeftSection _ e op) =
@@ -1214,7 +1174,6 @@ instance AstPretty Exp where
     <*> prettyInfoElem c <*> braceList (noInfoList fieldList)
   astPrettyPrec _ (RecUpdate _ e fieldList) = resultPretty $ constrElem RecUpdate
     <*> prettyInfoElem e <*> braceList (noInfoList fieldList)
-
   -- Lists
   astPrettyPrec _ (List _ list) =  resultPretty $ constrElem List
      <*> brackets (intersperse (infoElem "," <* sepElem myFsepSimple) $ noInfoList list)
@@ -1282,8 +1241,7 @@ instance AstPretty Exp where
       <*> prettyInfoElem e
       <*  sepElem myFsep
       <*  infoElem "::"
-      <*> prettyInfoElem ty
-
+     <*> prettyInfoElem ty
   -- Template Haskell
   astPrettyPrec _ (BracketExp _ b) = resultPretty $ constrElem BracketExp <*> prettyInfoElem b
   astPrettyPrec _ (SpliceExp _ s) = resultPretty $ constrElem SpliceExp <*> prettyInfoElem s
@@ -1298,7 +1256,6 @@ instance AstPretty Exp where
       <*  infoElem "|"
       <*> infoElem qt
       <*  infoElem "|]"
-
   -- Hsx
   astPrettyPrec _ (XTag _ n attrs mattr cs) = undefined
   astPrettyPrec _ (XETag _ n attrs mattr) =
@@ -1330,7 +1287,6 @@ instance AstPretty Exp where
       <*> intersperse (sepElem myFsep) (noInfoList cs)
       <*  sepElem myFsep
       <*  infoElem "</%>"
-
   -- Pragmas
   astPrettyPrec p (CorePragma _ s e) =
     resultPretty $ constrElem CorePragma
@@ -1373,7 +1329,6 @@ instance AstPretty Exp where
           <* infoElem ":"
           <* sepElem myFsep
           <* noInfoElem (show y)
-
   -- Arrows
   astPrettyPrec p (Proc _ pat e) =
     resultPretty.parensIf (p > 1) $ constrElem Proc
@@ -1822,7 +1777,6 @@ instance AstPretty SpecialCon where
       <* infoElem point
       <*> pure b
       <*> pure n
-
   astPretty (Cons _) = resultPretty $ constrElem Cons <* infoElem ":"
   astPretty (UnboxedSingleCon _) = resultPretty $ constrElem UnboxedSingleCon <* infoElem "(# #)"
 
@@ -1968,7 +1922,6 @@ instance AstPretty Asst where
       <*  sepElem myFsep
       <*  infoElem "::"
       <*> prettyInfoElem t
-
   astPretty (EqualP _ t1 t2)  = -- myFsep $ [pretty t1, text "~", pretty t2]
     resultPretty $ constrElem EqualP
       <*> prettyInfoElem t1
