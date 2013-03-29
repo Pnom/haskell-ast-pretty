@@ -200,8 +200,8 @@ instance AstPretty Module where
         impl os h i d = Module undefined h os i d
         vcatList dl = intersperse (sepElem myVcat) $ noInfoList dl
         prettyLs dl = (if isJust mbHead then topLevel else vcatList) dl
-  astPretty (XmlPage pos _mn os n attrs mattr cs) = undefined
-  astPretty (XmlHybrid pos mbHead os imp decls n attrs mattr cs) = undefined
+  astPretty (XmlPage _ _mn os n attrs mattr cs) = undefined
+  astPretty (XmlHybrid _ mbHead os imp decls n attrs mattr cs) = undefined
 
 --------------------------  Module Header ------------------------------
 
@@ -1687,8 +1687,50 @@ instance AstPretty Pat where
       <*  sepElem myFsep
       <*> pure k <* infoElem (show k)
   -- HaRP
-  astPrettyPrec _ (PRPat _ rs) = resultPretty $ constrElem PRPat <*> bracketList (noInfoList rs)
-  astPretty = undefined
+astPrettyPrec _ (PRPat _ rs) = resultPretty $ constrElem PRPat <*> bracketList (noInfoList rs)
+  astPrettyPrec _ (PXTag _ n attrs mattr cp) = undefined
+  astPrettyPrec _ (PXETag _ n attrs mattr) =
+    resultPretty $ constrElem PXETag
+    -- myFsep
+      <*  infoElem "<"
+      <*> prettyInfoElem n
+      <*  sepElem myFsep
+      <*> intersperse (sepElem myFsep) (map prettyInfoElem attrs)
+      <*  sepElem myFsep
+      <*> traverse prettyInfoElem mattr
+      <*  sepElem myFsep
+      <*  infoElem "/>"
+  astPrettyPrec _ (PXPcdata _ s) = resultPretty $ constrElem PXPcdata <*> infoElem s
+  astPrettyPrec _ (PXPatTag _ p) =
+    resultPretty $ constrElem PXPatTag
+      -- myFsep
+      <*  infoElem "<%"
+      <*  sepElem myFsep
+      <*> prettyInfoElem p
+      <*  sepElem myFsep
+      <*  infoElem "%>"
+  astPrettyPrec _ (PXRPats _ ps) =
+    resultPretty $ constrElem PXRPats
+      -- myFsep
+      <*  infoElem "<["
+      <*  sepElem myFsep
+      <*> intersperse (sepElem myFsep) (map prettyInfoElem ps)
+      <*  sepElem myFsep
+      <*  infoElem "]>"
+  -- Generics
+  astPrettyPrec _ (PExplTypeArg _ qn t) =
+    resultPretty $ constrElem PExplTypeArg
+      <*> prettyInfoElem qn
+      <*  sepElem myFsep
+      <*  infoElem "{|"
+      <*  sepElem myFsep
+      <*> prettyInfoElem t
+      <*  sepElem myFsep
+      <*  infoElem "|}"
+  astPrettyPrec _ (PBangPat _ pat) =
+    resultPretty $ constrElem PBangPat
+      <*  infoElem "!"
+      <*> annInfoElem (astPrettyPrec 2 pat)
 
 -- --------------------------------------------------------------------------
 
