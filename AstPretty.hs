@@ -28,10 +28,10 @@ type DocM = ReaderT PrettyMode (State DocState)
 
 -- | render the document with a given mode.
 renderWithMode :: PrettyMode -> DocM a -> a
-renderWithMode mode state doc = evalState (runReaderT doc mode) defDocState
+renderWithMode mode doc = evalState (runReaderT doc mode) defDocState
 
 -- | render the document with 'defaultMode'.
--- renderWithDefMode :: DocState -> DocM a -> a
+renderWithDefMode :: DocM a -> a
 renderWithDefMode a = renderWithMode defPrettyMode a
 
 -- --------------------------------------------------------------------------
@@ -1235,7 +1235,7 @@ instance AstPretty Exp where
       <*> prettyInfoElem e
       <*  sepElem myFsep
       <*  infoElem "::"
-     <*> prettyInfoElem ty
+      <*> prettyInfoElem ty
   -- Template Haskell
   astPrettyPrec _ (BracketExp _ b) = resultPretty $ constrElem BracketExp <*> prettyInfoElem b
   astPrettyPrec _ (SpliceExp _ s) = resultPretty $ constrElem SpliceExp <*> prettyInfoElem s
@@ -1505,7 +1505,7 @@ instance AstPretty Pat where
       <*  sepElem myFsep
       <*> pure k <* infoElem (show k)
   -- HaRP
-astPrettyPrec _ (PRPat _ rs) = resultPretty $ constrElem PRPat <*> bracketList (noInfoList rs)
+  astPrettyPrec _ (PRPat _ rs) = resultPretty $ constrElem PRPat <*> bracketList (noInfoList rs)
   astPrettyPrec _ (PXTag _ n attrs mattr cp) = undefined
   astPrettyPrec _ (PXETag _ n attrs mattr) =
     resultPretty $ constrElem PXETag
