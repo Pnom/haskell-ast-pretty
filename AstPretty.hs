@@ -37,139 +37,8 @@ renderWithMode :: PrettyMode -> DocState -> DocM a -> a
 renderWithMode mode state doc = evalState (runReaderT doc mode) state
 
 -- | render the document with 'defaultMode'.
-renderWithDefMode :: DocState -> DocM a -> a
-renderWithDefMode = renderWithMode defPrettyMode
-
--- --------------------------------------------------------------------------
-
-format :: String -> DocM SrcSpan
-format s = do
-  SrcLoc f l c <- getPos
-  let newColumn = c + length s
-  putPos $ SrcLoc f l newColumn
-  return $ SrcSpan f l c l newColumn
-
-getPos :: DocM SrcLoc
-getPos = gets pos
-
-putPos :: SrcLoc -> DocM SrcLoc
-putPos l = do
-  DocState _ n <- get
-  put $! DocState l n
-  return l
-
-line :: DocM ()
-line = do
-  DocState (SrcLoc f l c) n <- get
-  putPos $! SrcLoc f (l + 1) (if n > 0 then n else 1)
-  return ()
-
-space :: Int -> DocM ()
-space x = do
-  SrcLoc f l c <- getPos
-  putPos $! SrcLoc f l $! c + x
-  return ()
-
-nest :: Int -> DocM ()
-nest x = do
-  DocState l n <- get
-  put $! DocState l $ 1 + n + x
-  return ()
-
--- --------------------------------------------------------------------------
-
-data AstElem a = AstElem (DocM (a, [SrcSpan]))
-
-instance Functor AstElem where
-  fmap f (AstElem a) = AstElem $ do
-    (a', ps) <- a
-    return $ (f a', ps)
-
-instance Applicative AstElem where
-  pure a = AstElem $ return (a, [])
-
-  (<*>) (AstElem f) (AstElem a) = AstElem $ do
-    (f', ps) <- f
-    (a', p) <- a
-    return (f' a', ps ++ p)
-
-  (*>) (AstElem a) (AstElem b) = AstElem $ do
-    (_,  ap) <- a
-    (b', bp) <- b
-    return (b', ap ++ bp)
-
-  (<*) (AstElem a) (AstElem b) = AstElem $ do
-    (a', ap) <- a
-    (_,  bp) <- b
-    return (a', ap ++ bp)
-
--- --------------------------------------------------------------------------
-
-infoElem :: String -> AstElem String
-infoElem "" = AstElem $ return ("", [])
-infoElem s = AstElem $ do
-  s' <- format s
-  return (s, [s'])
-
-noInfoElem :: String -> AstElem String
-noInfoElem "" = AstElem $ return ("", [])
-noInfoElem s = AstElem $ do
-  s' <- format s
-  return (s, [])
-
-sepElem :: DocM() -> AstElem ()
-sepElem s = AstElem $ do
-  _ <- s
-  return ((), [])
-
-prettyNoInfoElem :: (AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
-prettyNoInfoElem a = annNoInfoElem $ astPretty a
-
-prettyInfoElem :: (Annotated ast, AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
-prettyInfoElem a = annInfoElem $ astPretty a
-
-annNoInfoElem :: DocM a -> AstElem a
-annNoInfoElem a = AstElem $ do
-  a' <- a
-  return (a', [])
-
-annInfoElem :: DocM a -> AstElem a
-annInfoElem a = AstElem $ do
-  sp <- getPos
-  a' <- a
-  ep <- getPos
-  let ps = if sp == ep then [] else [mkSrcSpan sp ep]
-  return $ (a', ps)
-
-constrElem f = pure $ f undefined
-
-infoList xs = map prettyInfoElem xs
-noInfoList xs = map prettyNoInfoElem xs
-
--- --------------------------------------------------------------------------
-
-intersperse :: Applicative f => f a1 -> [f a] -> f [a]
-intersperse _ [] = pure []
-intersperse sep (e:es) = sequenceA $ e : (map (sep *>) es)
-
--- --------------------------------------------------------------------------
-
-intersperse1 :: Applicative f => f a1 -> f a2 -> [f a] -> f [a]
-intersperse1 _ _ [] = pure []
-intersperse1 sFrst sep [e] = sequenceA [e]
-intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (sep *>) es)
-
-traverseSep sep f m = traverse (\e -> f e <* sep) m
-
--- --------------------------------------------------------------------------
-
---resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
-resultPretty (AstElem a) = do
-  sp <- getPos
-  (a', ps) <- a
-  ep <- getPos
-  let span = SrcSpanInfo (mkSrcSpan sp ep) ps
-  return $ amap (const span) a'
+-- renderWithDefMode :: DocState -> DocM a -> a
+renderWithDefMode a = renderWithMode defPrettyMode a
 
 -- --------------------------------------------------------------------------
 
@@ -2107,7 +1976,131 @@ instance AstPretty Asst where
       <*   infoElem "~"
       <*> prettyInfoElem t2
 
+------------------------- pp utils -------------------------
+
+format :: String -> DocM SrcSpan
+format s = do
+  SrcLoc f l c <- getPos
+  let newColumn = c + length s
+  putPos $ SrcLoc f l newColumn
+  return $ SrcSpan f l c l newColumn
+
+getPos :: DocM SrcLoc
+getPos = gets pos
+
+putPos :: SrcLoc -> DocM SrcLoc
+putPos l = do
+  DocState _ n <- get
+  put $! DocState l n
+  return l
+
+line :: DocM ()
+line = do
+  DocState (SrcLoc f l c) n <- get
+  putPos $! SrcLoc f (l + 1) (if n > 0 then n else 1)
+  return ()
+
+space :: Int -> DocM ()
+space x = do
+  SrcLoc f l c <- getPos
+  putPos $! SrcLoc f l $! c + x
+  return ()
+
+nest :: Int -> DocM ()
+nest x = do
+  DocState l n <- get
+  put $! DocState l $ 1 + n + x
+  return ()
+
 -- --------------------------------------------------------------------------
+-- AstElem definition
+
+data AstElem a = AstElem (DocM (a, [SrcSpan]))
+
+instance Functor AstElem where
+  fmap f (AstElem a) = AstElem $ do
+    (a', ps) <- a
+    return $ (f a', ps)
+
+instance Applicative AstElem where
+  pure a = AstElem $ return (a, [])
+  (<*>) (AstElem f) (AstElem a) = AstElem $ do
+    (f', ps) <- f
+    (a', p) <- a
+    return (f' a', ps ++ p)
+  (*>) (AstElem a) (AstElem b) = AstElem $ do
+    (_,  ap) <- a
+    (b', bp) <- b
+    return (b', ap ++ bp)
+  (<*) (AstElem a) (AstElem b) = AstElem $ do
+    (a', ap) <- a
+    (_,  bp) <- b
+    return (a', ap ++ bp)
+
+-- --------------------------------------------------------------------------
+-- AstElem utils
+
+infoElem :: String -> AstElem String
+infoElem "" = AstElem $ return ("", [])
+infoElem s = AstElem $ do
+  s' <- format s
+  return (s, [s'])
+
+noInfoElem :: String -> AstElem String
+noInfoElem "" = AstElem $ return ("", [])
+noInfoElem s = AstElem $ do
+  s' <- format s
+  return (s, [])
+
+sepElem :: DocM() -> AstElem ()
+sepElem s = AstElem $ do
+  _ <- s
+  return ((), [])
+
+prettyNoInfoElem :: (AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
+prettyNoInfoElem a = annNoInfoElem $ astPretty a
+
+prettyInfoElem :: (Annotated ast, AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
+prettyInfoElem a = annInfoElem $ astPretty a
+
+annNoInfoElem :: DocM a -> AstElem a
+annNoInfoElem a = AstElem $ do
+  a' <- a
+  return (a', [])
+
+annInfoElem :: DocM a -> AstElem a
+annInfoElem a = AstElem $ do
+  sp <- getPos
+  a' <- a
+  ep <- getPos
+  let ps = if sp == ep then [] else [mkSrcSpan sp ep]
+  return $ (a', ps)
+
+constrElem f = pure $ f undefined
+
+infoList xs = map prettyInfoElem xs
+noInfoList xs = map prettyNoInfoElem xs
+
+intersperse :: Applicative f => f a1 -> [f a] -> f [a]
+intersperse _ [] = pure []
+intersperse sep (e:es) = sequenceA $ e : (map (sep *>) es)
+
+intersperse1 :: Applicative f => f a1 -> f a2 -> [f a] -> f [a]
+intersperse1 _ _ [] = pure []
+intersperse1 sFrst sep [e] = sequenceA [e]
+intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (sep *>) es)
+
+traverseSep sep f m = traverse (\e -> f e <* sep) m
+
+resultPretty (AstElem a) = do
+  sp <- getPos
+  (a', ps) <- a
+  ep <- getPos
+  let span = SrcSpanInfo (mkSrcSpan sp ep) ps
+  return $ amap (const span) a'
+
+-- --------------------------------------------------------------------------
+-- separators
 
 vcat :: DocM ()
 vcat = do
@@ -2116,15 +2109,12 @@ vcat = do
   _ <- s
   return ()
 
--- --------------------------------------------------------------------------
-
 hsep :: DocM ()
 hsep = space 1
 
 hcat :: DocM ()
 hcat = pure ()
 
--- --------------------------------------------------------------------------
 -- fsep prototype
 fsep :: DocM ()
 fsep  = do
@@ -2135,7 +2125,38 @@ fsep  = do
       if srcColumn c >= lineLength style then line else (pure ())
     _ -> undefined
 
-------------------------- pp utils -------------------------
+{-
+a $$$ b = layoutChoice (a vcat) (a <+>) b
+
+mySep = layoutChoice mySep' hsep
+  where
+    -- ensure paragraph fills with indentation.
+    mySep' [x]    = x
+    mySep' (x:xs) = x <+> fsep xs
+    mySep' []     = error "Internal error: mySep"
+-}
+
+myVcat = layoutChoice vcat hsep
+
+myFsepSimple = layoutChoice fsep hsep
+
+-- same, except that continuation lines are indented,
+-- which is necessary to avoid triggering the offside rule.
+-- myFsep prototype
+myFsep  = layoutChoice fsep' hsep
+  where
+    fsep' = do
+      PrettyMode m style  <- ask
+      let n = onsideIndent m
+      c <- getPos
+      case mode style of
+        PageMode ->
+          if srcColumn c >= lineLength style - n then line else (pure ())
+        _ -> undefined
+
+-- --------------------------------------------------------------------------
+-- paren related functions
+
 parenListSep :: AstElem String
 parenListSep = infoElem "," <* sepElem myFsepSimple
 
@@ -2177,6 +2198,15 @@ prettyBlock :: [AstElem a] -> AstElem [a]
 prettyBlock xs = infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) xs <* infoElem "}"
 
 -- --------------------------------------------------------------------------
+-- general utils
+
+layoutChoice a b  = do
+  PrettyMode mode _ <- ask
+  if layout mode == PPOffsideRule || layout mode == PPSemiColon
+  then a
+  else b
+
+
 blankline :: AstElem ()
 blankline = AstElem $ do
   PrettyMode mode _ <- ask
@@ -2224,47 +2254,6 @@ topLevel dl = AstElem $ do
       x
 
 -- --------------------------------------------------------------------------
-{-
-a $$$ b = layoutChoice (a vcat) (a <+>) b
-
-mySep = layoutChoice mySep' hsep
-  where
-    -- ensure paragraph fills with indentation.
-    mySep' [x]    = x
-    mySep' (x:xs) = x <+> fsep xs
-    mySep' []     = error "Internal error: mySep"
--}
-
--- --------------------------------------------------------------------------
-
-myVcat = layoutChoice vcat hsep
-
--- --------------------------------------------------------------------------
-
-myFsepSimple = layoutChoice fsep hsep
-
--- --------------------------------------------------------------------------
--- same, except that continuation lines are indented,
--- which is necessary to avoid triggering the offside rule.
--- myFsep prototype
-myFsep  = layoutChoice fsep' hsep
-  where
-    fsep' = do
-      PrettyMode m style  <- ask
-      let n = onsideIndent m
-      c <- getPos
-      case mode style of
-        PageMode ->
-          if srcColumn c >= lineLength style - n then line else (pure ())
-        _ -> undefined
-
--- --------------------------------------------------------------------------
-
-layoutChoice a b  = do
-  PrettyMode mode _ <- ask
-  if layout mode == PPOffsideRule || layout mode == PPSemiColon
-  then a
-  else b
 
 -- --------------------------------------------------------------------------
 -- simplify utils
