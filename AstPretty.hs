@@ -1,10 +1,7 @@
-module AstPretty ( AstPretty(astPretty),
-  DocState(..),
-  DocM,
-  format, line, space, nest,
+module AstPretty (AstPretty(astPretty, astPrettyPrec),
   renderWithMode, renderWithDefMode,
   PrettyMode(..), defPrettyMode,
-  parenList, braceList
+  PR.Style(..), PR.style, PR.Mode(..), PR.defaultMode
   ) where
 
 import Language.Haskell.Exts.Annotated
@@ -17,24 +14,21 @@ import Data.Maybe
 import Data.List hiding (intersperse)
 import Data.Traversable
 
-import Debug.Trace
-
 data DocState = DocState {
   pos :: !SrcLoc,
   nestSize :: !Int
   } deriving Show
 
-data PrettyMode = PrettyMode PR.PPHsMode PR.Style
+defDocState = DocState (SrcLoc "unknown.hs"  1  1) 0
 
+data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 defPrettyMode = PrettyMode PR.defaultMode PR.style
 
 type DocM = ReaderT PrettyMode (State DocState)
 
--- --------------------------------------------------------------------------
 -- | render the document with a given mode.
-
-renderWithMode :: PrettyMode -> DocState -> DocM a -> a
-renderWithMode mode state doc = evalState (runReaderT doc mode) state
+renderWithMode :: PrettyMode -> DocM a -> a
+renderWithMode mode state doc = evalState (runReaderT doc mode) defDocState
 
 -- | render the document with 'defaultMode'.
 -- renderWithDefMode :: DocState -> DocM a -> a
@@ -2220,20 +2214,4 @@ sInstHead ih = case ih of
   IHead _ qn ts      -> (qn, ts)
   IHInfix _ ta qn tb -> (qn, [ta,tb])
   IHParen _ ih       -> sInstHead ih
-
--- --------------------------------------------------------------------------
-
-zeroSt = DocState (SrcLoc "unknown.hs"  1  1) 0
-
--- -----------------------------------------------------------------------------
-
-ilist = [Ident undefined "fst", Ident undefined "second"]-- , Ident undefined "third", Ident undefined "four"]
-
-renderAst (AstElem x) = renderWithMode (PrettyMode PR.defaultMode (Style PageMode 10 1.5)) zeroSt x
-
-exampleList = renderAst $ intersperse (pure ()) (noInfoList ilist)
-
-p = Paren undefined $ Var undefined $ UnQual undefined $ Ident undefined "id"
-
-
 
