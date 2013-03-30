@@ -597,7 +597,7 @@ instance AstPretty Match where
             cp  = infoElem $ if null pbs' then "" else ")"
             l'   = op *> prettyInfoElem l
             r'   = cp *> prettyInfoElem r
-            n'   = ppName n
+            n'   = annInfoElem $ ppName n
           in l' `seq` n' `seq` r' `seq` (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
         _ -> let
           n'   = prettyInfoElem n
@@ -831,7 +831,7 @@ instance AstPretty ConDecl where
   astPretty (ConDecl _ name typeList) =
     resultPretty $ constrElem ConDecl
     -- mySep
-      <*> ppName name
+      <*> annInfoElem (ppName name)
       <*  sepElem hsep
       <*> intersperse (sepElem fsep) (map (annNoInfoElem.astPrettyPrec prec_atype) typeList)
   astPretty (InfixConDecl _ l name r) =
@@ -1778,8 +1778,8 @@ instance AstPretty SpecialCon where
 
 instance AstPretty QName where
   astPretty qn
-    | needParens = resultPretty $ enclose (infoElem "(" <* sepElem hsep) (infoElem ")") (rawQName qn)
-    | otherwise =  resultPretty $ rawQName qn
+    | needParens = resultPretty $ enclose (infoElem "(" <* sepElem hsep) (infoElem ")") (annInfoElem $ rawQName qn)
+    | otherwise =  rawQName qn
     where
       needParens = case qn of
         UnQual _    (Symbol _ _) -> True
@@ -1790,20 +1790,19 @@ instance AstPretty QName where
 
 -- --------------------------------------------------------------------------
 -- QName utils
-rawQName :: QName a -> AstElem (QName SrcSpanInfo)
+rawQName :: QName a -> DocM (QName SrcSpanInfo)
 rawQName (Qual _ mn n)  =
-  pure (Qual undefined)
+  resultPretty $ constrElem Qual
     <*> prettyNoInfoElem mn
     <*  infoElem "."
-    <*> ppName n
-rawQName (UnQual _ n) =
-  constrElem UnQual <*> ppName n
-rawQName (Special _ sc) = constrElem Special <*> prettyNoInfoElem sc
+    <*> annInfoElem (ppName n)
+rawQName (UnQual _ n)   = resultPretty $ constrElem UnQual <*> annInfoElem (ppName n)
+rawQName (Special _ sc) = resultPretty $ constrElem Special <*> prettyNoInfoElem sc
 
 ppQNameInfix :: QName a -> AstElem (QName SrcSpanInfo)
 ppQNameInfix name
-  | isSymbolName (getName name) = rawQName name
-  | otherwise = infoElem "`" *> rawQName name <* infoElem "`"
+  | isSymbolName (getName name) = annInfoElem $ rawQName name
+  | otherwise = infoElem "`" *> annInfoElem (rawQName name) <* infoElem "`"
 
 -- --------------------------------------------------------------------------
 
@@ -1812,17 +1811,17 @@ instance AstPretty Op where
   astPretty (ConOp _ n) = resultPretty $ constrElem ConOp <*> ppNameInfix n
 
 -- --------------------------------------------------------------------------
-
+ppNameInfix :: Name a -> AstElem (Name SrcSpanInfo)
 ppNameInfix name
-  | isSymbolName name = ppName name
-  | otherwise = infoElem "`" *> ppName name <* infoElem "`"
+  | isSymbolName name = annInfoElem $ ppName name
+  | otherwise = infoElem "`" *> annInfoElem (ppName name) <* infoElem "`"
 
 instance AstPretty Name where
-  astPretty n@(Ident _ _) = resultPretty $ ppName n
+  astPretty n@(Ident _ _) = ppName n
   astPretty (Symbol _ s) =
     resultPretty.parens $ constrElem Symbol
       <*  sepElem hsep
-      <*> infoElem s
+      <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
@@ -1846,9 +1845,9 @@ specialName (TupleCon _ b n) = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
 specialName (Cons _) = ":"
 specialName (UnboxedSingleCon _) = "(# #)"
 
-ppName :: Name t -> AstElem (Name a)
-ppName (Symbol _ s) = constrElem Symbol <*> noInfoElem s
-ppName (Ident  _ s) = constrElem Ident <*> noInfoElem s
+ppName :: Name a -> DocM (Name SrcSpanInfo)
+ppName (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
+ppName (Ident  _ s) = resultPretty $ constrElem Ident <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
@@ -2201,8 +2200,6 @@ topLevel dl = AstElem $ do
       x
 
 -- --------------------------------------------------------------------------
-
--- --------------------------------------------------------------------------
 -- simplify utils
 
 sDeclHead dh = case dh of
@@ -2215,3 +2212,4 @@ sInstHead ih = case ih of
   IHInfix _ ta qn tb -> (qn, [ta,tb])
   IHParen _ ih       -> sInstHead ih
 
+renderAst (AstElem x) = renderWithDefMode x
