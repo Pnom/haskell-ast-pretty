@@ -8,6 +8,7 @@ import Language.Haskell.Exts.Annotated
 import qualified Language.Haskell.Exts.Pretty as PR
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Applicative
 
 import Data.Maybe
@@ -150,6 +151,13 @@ instance AstPretty ImportSpec where
   astPretty (IThingWith _ name nameList) =
     resultPretty $ constrElem IThingWith <*> prettyNoInfoElem name <*> parenList (noInfoList nameList)
 
+identDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
+identDeriving d = do
+  xs <- ppBody letIndent [ppDeriving d]
+  return $ head xs
+
+identDeriving' :: Deriving a -> AstElem (Deriving SrcSpanInfo)
+identDeriving' d = ppBody letIndent [ppDeriving d] >>= return.head
 
 -------------------------  Declarations ------------------------------
 
@@ -190,7 +198,7 @@ instance AstPretty Decl where
     -- $$$ is the same as myVcat
     <*  sepElem myVcat
     <*> traverse ppDeriving mDeriving
-  astPretty (GDataDecl _ don mContext head mkind gadtDecl mDeriving) =
+  astPretty (GDataDecl _ don mContext hd mkind gadtDecl mDeriving) =
     resultPretty $ constrElem GDataDecl
       <* blankline
       -- mySep
@@ -198,7 +206,7 @@ instance AstPretty Decl where
       <*  sepElem hsep
       <*> ppContext mContext
       <*  sepElem fsep
-      <*> ppFsepDhead head
+      <*> ppFsepDhead hd
       <*  sepElem fsep
       <*> ppOptKind mkind
       <*  sepElem fsep
@@ -208,11 +216,8 @@ instance AstPretty Decl where
       <*> ppBody classIndent (noInfoList gadtDecl)
       <*  sepElem myVcat
       <*> traverse identDeriving mDeriving
-    where
-      identDeriving d = AstElem $ do
-        let AstElem xs = ppBody letIndent [ppDeriving d]
-        ([x], ps) <- xs
-        return (x, ps)
+      where
+        identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
   astPretty (DataFamDecl _ mContext head mKind) =
     resultPretty $ constrElem DataFamDecl
       <* blankline
@@ -341,10 +346,10 @@ instance AstPretty Decl where
     resultPretty $ constrElem FunBind
       <*> intersperse sep (noInfoList ms)
     where
-      sep = AstElem $ do
+      sep = do
         PrettyMode mode _ <- ask
-        let AstElem x = if layout mode == PPOffsideRule then (infoElem "" <* sepElem myVcat) else infoElem ";"
-        x
+        if layout mode == PPOffsideRule then (infoElem "" <* sepElem myVcat) else infoElem ";"
+
   astPretty (PatBind _ pat mType rhs mBinds) =
     resultPretty $ constrElem PatBind
       -- myFsep
@@ -1961,47 +1966,20 @@ nest x = do
 -- --------------------------------------------------------------------------
 -- AstElem definition
 
-data AstElem a = AstElem (DocM (a, [SrcSpan]))
+type AstElem = WriterT [SrcSpan] DocM
 
-instance Functor AstElem where
-  fmap f (AstElem a) = AstElem $ do
-    (a', ps) <- a
-    return $ (f a', ps)
-
-instance Applicative AstElem where
-  pure a = AstElem $ return (a, [])
-  (<*>) (AstElem f) (AstElem a) = AstElem $ do
-    (f', ps) <- f
-    (a', p) <- a
-    return (f' a', ps ++ p)
-  (*>) (AstElem a) (AstElem b) = AstElem $ do
-    (_,  ap) <- a
-    (b', bp) <- b
-    return (b', ap ++ bp)
-  (<*) (AstElem a) (AstElem b) = AstElem $ do
-    (a', ap) <- a
-    (_,  bp) <- b
-    return (a', ap ++ bp)
 
 -- --------------------------------------------------------------------------
 -- AstElem utils
 
 infoElem :: String -> AstElem String
-infoElem "" = AstElem $ return ("", [])
-infoElem s = AstElem $ do
-  s' <- format s
-  return (s, [s'])
+infoElem s = annInfoElem $ format s >> return s
 
 noInfoElem :: String -> AstElem String
-noInfoElem "" = AstElem $ return ("", [])
-noInfoElem s = AstElem $ do
-  s' <- format s
-  return (s, [])
+noInfoElem s = annNoInfoElem $  format s >> return s
 
 sepElem :: DocM() -> AstElem ()
-sepElem s = AstElem $ do
-  _ <- s
-  return ((), [])
+sepElem s = annNoInfoElem s
 
 prettyNoInfoElem :: (AstPretty ast) => ast a -> AstElem (ast SrcSpanInfo)
 prettyNoInfoElem a = annNoInfoElem $ astPretty a
@@ -2010,19 +1988,18 @@ prettyInfoElem :: (Annotated ast, AstPretty ast) => ast a -> AstElem (ast SrcSpa
 prettyInfoElem a = annInfoElem $ astPretty a
 
 annNoInfoElem :: DocM a -> AstElem a
-annNoInfoElem a = AstElem $ do
-  a' <- a
-  return (a', [])
+annNoInfoElem a = lift a
 
 annInfoElem :: DocM a -> AstElem a
-annInfoElem a = AstElem $ do
-  sp <- getPos
-  a' <- a
-  ep <- getPos
-  let ps = if sp == ep then [] else [mkSrcSpan sp ep]
-  return $ (a', ps)
+annInfoElem a = do
+  sp <- lift getPos
+  a' <- lift a
+  ep <- lift getPos
+  tell $ if sp == ep then [] else [mkSrcSpan sp ep]
+  return a'
 
-constrElem f = pure $ f undefined
+constrElem :: (a -> b) -> AstElem b
+constrElem f = lift.return $ f undefined
 
 infoList xs = map prettyInfoElem xs
 noInfoList xs = map prettyNoInfoElem xs
@@ -2038,9 +2015,10 @@ intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (se
 
 traverseSep sep f m = traverse (\e -> f e <* sep) m
 
-resultPretty (AstElem a) = do
+resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
+resultPretty a = do
   sp <- getPos
-  (a', ps) <- a
+  (a', ps) <- runWriterT a
   ep <- getPos
   let span = SrcSpanInfo (mkSrcSpan sp ep) ps
   return $ amap (const span) a'
@@ -2154,50 +2132,36 @@ layoutChoice a b  = do
 
 
 blankline :: AstElem ()
-blankline = AstElem $ do
+blankline = do
   PrettyMode mode _ <- ask
-  let AstElem x = if spacing mode && layout mode /= PPNoLayout
+  if spacing mode && layout mode /= PPNoLayout
       then
         sepElem hsep <* sepElem vcat
       else
         sepElem (pure ())
-  x
 
 ppBody :: (PR.PPHsMode -> Int) -> [AstElem a] -> AstElem [a]
-ppBody f dl =  AstElem $ do
+ppBody f dl =  do
   (PrettyMode mode _) <- ask
   let i = f mode
   case layout mode of
-    PPOffsideRule -> do
-      let AstElem x = indent i
-      x
-    PPSemiColon   -> do
-      let AstElem x = indentExplicit i
-      x
-    _ -> do
-      let AstElem x = flatBlock dl
-      x
+    PPOffsideRule -> indent i
+    PPSemiColon   -> indentExplicit i
+    _ -> flatBlock dl
   where
     indent i = intersperse ((sepElem $ nest i) *> sepElem vcat) dl
     indentExplicit i = (sepElem $ nest i) *> prettyBlock dl
 
 topLevel :: (Annotated ast, AstPretty ast) => [ast a] -> AstElem [ast SrcSpanInfo]
-topLevel dl = AstElem $ do
+topLevel dl = do
   PrettyMode mode _ <- ask
   let dl' = noInfoList dl
   case layout mode of
-    PPOffsideRule -> do
-      let AstElem x = sepElem vcat *> intersperse (sepElem myVcat) dl'
-      x
-    PPSemiColon -> do
-      let AstElem x = sepElem vcat *> prettyBlock dl'
-      x
-    PPInLine -> do
-      let AstElem x = sepElem vcat *> prettyBlock dl'
-      x
-    PPNoLayout -> do
-      let AstElem x = sepElem hsep *> flatBlock dl'
-      x
+    PPOffsideRule -> sepElem vcat *> intersperse (sepElem myVcat) dl'
+    PPSemiColon -> sepElem vcat *> prettyBlock dl'
+    PPInLine -> sepElem vcat *> prettyBlock dl'
+    PPNoLayout -> sepElem hsep *> flatBlock dl'
+
 
 -- --------------------------------------------------------------------------
 -- simplify utils
@@ -2211,5 +2175,3 @@ sInstHead ih = case ih of
   IHead _ qn ts      -> (qn, ts)
   IHInfix _ ta qn tb -> (qn, [ta,tb])
   IHParen _ ih       -> sInstHead ih
-
-renderAst (AstElem x) = renderWithDefMode x
