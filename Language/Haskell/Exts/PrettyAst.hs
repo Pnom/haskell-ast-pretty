@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Language.Haskell.Exts.PrettyAst
   ( PrettyAst(..)
   , renderWithMode
@@ -1943,28 +1944,28 @@ format s = do
   putPos $ SrcLoc f l newColumn
   return $ SrcSpan f l c l newColumn
 
-getPos :: DocM SrcLoc
+getPos :: MonadState DocState m => m SrcLoc
 getPos = gets pos
 
-putPos :: SrcLoc -> DocM SrcLoc
+putPos :: MonadState DocState m => SrcLoc -> m SrcLoc
 putPos l = do
   DocState _ n <- get
   put $! DocState l n
   return l
 
-line :: DocM ()
+line :: MonadState DocState m => m ()
 line = do
   DocState (SrcLoc f l c) n <- get
   putPos $! SrcLoc f (l + 1) (if n > 0 then n else 1)
   return ()
 
-space :: Int -> DocM ()
+space :: MonadState DocState m => Int -> m ()
 space x = do
   SrcLoc f l c <- getPos
   putPos $! SrcLoc f l $! c + x
   return ()
 
-nest :: Int -> DocM ()
+nest :: MonadState DocState m => Int -> m ()
 nest x = do
   DocState l n <- get
   put $! DocState l $ 1 + n + x
@@ -1999,9 +2000,9 @@ annNoInfoElem a = lift a
 
 annInfoElem :: DocM a -> AstElem a
 annInfoElem a = do
-  sp <- lift getPos
+  sp <- getPos
   a' <- lift a
-  ep <- lift getPos
+  ep <- getPos
   tell $ if sp == ep then [] else [mkSrcSpan sp ep]
   return a'
 
