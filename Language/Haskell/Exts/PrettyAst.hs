@@ -1,4 +1,4 @@
-module AstPretty
+module Language.Haskell.Exts.PrettyAst
   ( AstPretty(..)
   , renderWithMode
   , renderWithDefMode

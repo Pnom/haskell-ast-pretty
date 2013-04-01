@@ -44,7 +44,7 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     AstPretty
+  exposed-modules:     Language.Haskell.Exts.PrettyAst
   
   -- Modules included in this library but not exported.
   -- other-modules:       
