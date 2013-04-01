@@ -44,7 +44,7 @@ renderWithDefMode a = renderWithMode defPrettyMode a
 -- --------------------------------------------------------------------------
 
 class AstPretty ast where
- -- | Pretty-print something in isolation.
+  -- | Pretty-print something in isolation.
   astPretty :: ast a -> DocM (ast SrcSpanInfo)
 
   -- | Pretty-print something in a precedence context.
@@ -201,7 +201,7 @@ instance AstPretty Decl where
     <*> ppFsepDhead head
     <*  sepElem hsep
     <*> ppConstrList constrList
-    -- $$$ is the same as myVcat
+    -- '$$$' is the same as myVcat
     <*  sepElem myVcat
     <*> traverse ppDeriving mDeriving
   astPretty (GDataDecl _ don mContext hd mkind gadtDecl mDeriving) =
@@ -217,7 +217,7 @@ instance AstPretty Decl where
       <*> ppOptKind mkind
       <*  sepElem fsep
       <*  infoElem "where"
-      -- $$$ is the same as myVcat
+      -- '$$$' is the same as myVcat
       <*  sepElem myVcat
       <*> ppBody classIndent (noInfoList gadtDecl)
       <*  sepElem myVcat
@@ -261,7 +261,7 @@ instance AstPretty Decl where
       <*> prettyInfoElem t
       <*  sepElem hsep
       <*> ppConstrList qConDecl
-      -- $$$ is the same as myVcat
+      -- '$$$' is the same as myVcat
       <*  sepElem myVcat
       <*> traverse ppDeriving mDeriving
   astPretty (GDataInsDecl _ don t mKind gadtDecl mDeriving) =
@@ -275,7 +275,7 @@ instance AstPretty Decl where
       <*> prettyInfoElem t
       <*  sepElem fsep
       <*> ppOptKind mKind
-      -- $$$ is the same as myVcat
+      -- '$$$' is the same as myVcat
       <*  sepElem myVcat
       <*> ppBody classIndent (noInfoList gadtDecl)
       <*  sepElem myVcat
