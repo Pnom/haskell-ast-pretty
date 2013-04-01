@@ -8,6 +8,7 @@ module Language.Haskell.Exts.PrettyAst
   , PR.style
   , PR.Mode(..)
   , PR.defaultMode
+  , DocM
   ) where
 
 import Language.Haskell.Exts.Annotated
