@@ -1,7 +1,13 @@
-module AstPretty (AstPretty(astPretty, astPrettyPrec),
-  renderWithMode, renderWithDefMode,
-  PrettyMode(..), defPrettyMode,
-  PR.Style(..), PR.style, PR.Mode(..), PR.defaultMode
+module AstPretty
+  ( AstPretty(..)
+  , renderWithMode
+  , renderWithDefMode
+  , PrettyMode(..)
+  , defPrettyMode
+  , PR.Style(..)
+  , PR.style
+  , PR.Mode(..)
+  , PR.defaultMode
   ) where
 
 import Language.Haskell.Exts.Annotated
