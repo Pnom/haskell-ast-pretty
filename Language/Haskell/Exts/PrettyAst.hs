@@ -28,20 +28,20 @@ data DocState = DocState {
   nestSize :: !Int
   } deriving Show
 
-defDocState = DocState (SrcLoc "unknown.hs"  1  1) 0
+defDocState fl = DocState (SrcLoc fl  1  1) 0
 
 data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 defPrettyMode = PrettyMode PR.defaultMode PR.style
 
 type DocM = ReaderT PrettyMode (State DocState)
 
--- | render the document with a given mode.
-renderWithMode :: PrettyMode -> DocM a -> a
-renderWithMode mode doc = evalState (runReaderT doc mode) defDocState
+-- | render the document with a given file name and mode.
+renderWithMode :: String -> PrettyMode -> DocM a -> a
+renderWithMode fl mode doc = evalState (runReaderT doc mode) (defDocState fl)
 
--- | render the document with 'defaultMode'.
-renderWithDefMode :: DocM a -> a
-renderWithDefMode a = renderWithMode defPrettyMode a
+-- | render the document with a given file name and 'defaultMode'.
+renderWithDefMode :: String -> DocM a -> a
+renderWithDefMode fl a = renderWithMode fl defPrettyMode a
 
 -- --------------------------------------------------------------------------
 
