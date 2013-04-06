@@ -631,8 +631,8 @@ instance PrettyAst Match where
         <*> traverse ppWhere mWhere
 
 ppWhere (BDecls  _ []) = constrElem BDecls  <*> pure []
-ppWhere (BDecls  _ l)  = constrElem BDecls  <* (sepElem $ nest 2) <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList l)
-ppWhere (IPBinds _ b)  = constrElem IPBinds <* (sepElem $ nest 2) <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList b)
+ppWhere (BDecls  _ l)  = nest 2 $ constrElem BDecls  <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList l)
+ppWhere (IPBinds _ b)  = nest 2 $ constrElem IPBinds <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList b)
 
 -- --------------------------------------------------------------------------
 
@@ -1412,11 +1412,7 @@ ppLetExp f l b = constrElem Let
   <*  infoElem "in"
   <*> (annInfoElem $ astPretty b)
 
-ppWith f binds = f
-  <*  (sepElem $ nest 2)
-  <*  infoElem "with"
-  <*  sepElem myVcat
-  <*> ppBody withIndent (noInfoList binds)
+ppWith f binds = nest 2 $ f <* infoElem "with" <* sepElem myVcat <*> ppBody withIndent (noInfoList binds)
 withIndent = whereIndent
 
 --------------------- Template Haskell -------------------------
@@ -1973,12 +1969,6 @@ space x = do
   putPos $! SrcLoc f l $! c + x
   return ()
 
-nest :: MonadState DocState m => Int -> m ()
-nest x = do
-  DocState l n <- get
-  put $! DocState l $ 1 + n + x
-  return ()
-
 -- --------------------------------------------------------------------------
 -- AstElem definition
 
@@ -2022,6 +2012,15 @@ intersperse1 :: Applicative f => f a1 -> f a2 -> [f a] -> f [a]
 intersperse1 _ _ [] = pure []
 intersperse1 sFrst sep [e] = sequenceA [e]
 intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (sep *>) es)
+
+nest n a = (sepElem $ impl n) *> a <* (sepElem $ impl (-n))
+  where
+--    impl :: MonadState DocState m => Int -> m ()
+    impl x = do
+      DocState l n <- get
+      put $! DocState l $ 1 + n + x
+      return ()
+
 
 traverseSep sep f m = traverse (\e -> f e <* sep) m
 
@@ -2159,8 +2158,8 @@ ppBody f dl =  do
     PPSemiColon   -> indentExplicit i
     _ -> flatBlock dl
   where
-    indent i = intersperse ((sepElem $ nest i) *> sepElem vcat) dl
-    indentExplicit i = (sepElem $ nest i) *> prettyBlock dl
+    indent i = nest i $ intersperse (sepElem vcat) dl
+    indentExplicit i = nest i $ prettyBlock dl
 
 topLevel :: (Annotated ast, PrettyAst ast) => [ast a] -> AstElem [ast SrcSpanInfo]
 topLevel dl = do
