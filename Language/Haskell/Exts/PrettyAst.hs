@@ -33,7 +33,6 @@ defDocState fl = DocState (SrcLoc fl  1  1) 0
 data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 defPrettyMode = PrettyMode PR.defaultMode PR.style
 
-
 type DocM = ReaderT PrettyMode (State DocState)
 
 -- | render the document with a given file name and mode.
@@ -76,9 +75,9 @@ instance PrettyAst Module where
 --------------------------  Module Header ------------------------------
 
 instance PrettyAst ModuleHead where
- -- mySep
+  -- mySep1
   astPretty (ModuleHead _ m mbWarn mbExportList) =
-    resultPretty $ constrElem ModuleHead
+    resultPretty.onsideNest $ constrElem ModuleHead
       <*  infoElem "module"
       <*  sepElem hsep
       <*> (annNoInfoElem $ astPretty m)
@@ -106,8 +105,8 @@ instance PrettyAst WarningText where
       (DeprText _ s) -> impl DeprText "{-# DEPRECATED" s
       (WarnText _ s) -> impl WarnText "{-# WARNING"    s
       where
-        -- mySep
-      impl f c s = resultPretty $ constrElem f <* infoElem c <* sepElem hsep <*> infoElem s <* sepElem fsep <* infoElem "#}"
+        -- mySep1
+      impl f c s = resultPretty.onsideNest $ constrElem f <* infoElem c <* sepElem hsep <*> infoElem s <* sepElem fsep <* infoElem "#}"
 
 -- --------------------------------------------------------------------------
 
@@ -137,9 +136,9 @@ instance PrettyAst ExportSpec where
 
 instance PrettyAst ImportDecl where
   astPretty (ImportDecl _ mod qual src mbPkg mbName mbSpecs) =
-    resultPretty $ pure impl
+    resultPretty.onsideNest $ pure impl
       -- markLine
-      -- mySep
+      -- mySep1
       <*  infoElem "import"
       <*  sepElem hsep
       <*> pure src <* (infoElem $ if src then "{-# SOURCE #-}" else "")
@@ -184,9 +183,9 @@ identDeriving' d = ppBody letIndent [ppDeriving d] >>= return.head
 
 instance PrettyAst Decl where
   astPretty (TypeDecl _ head htype) =
-    resultPretty $ constrElem TypeDecl
+    resultPretty.onsideNest $ constrElem TypeDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <* infoElem "type"
       <* sepElem hsep
       <*> (annInfoElem $ astPretty head)
@@ -195,9 +194,9 @@ instance PrettyAst Decl where
       <* sepElem fsep
       <*> (annInfoElem $ astPretty htype)
   astPretty (TypeFamDecl _ head mkind) =
-    resultPretty $ constrElem TypeFamDecl
+    resultPretty.onsideNest $ constrElem TypeFamDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <* infoElem "type"
     <*  sepElem hsep
       <* infoElem "family"
@@ -206,9 +205,9 @@ instance PrettyAst Decl where
       <* sepElem fsep
       <*> ppOptKind mkind
   astPretty (DataDecl _ don mContext head constrList mDeriving) =
-    resultPretty $ constrElem DataDecl
+    resultPretty.onsideNest $ constrElem DataDecl
     <* blankline
-    -- mySep
+    -- mySep1
     <*> (annInfoElem $ astPretty don)
     <*  sepElem hsep
     <*> ppContext mContext
@@ -220,9 +219,9 @@ instance PrettyAst Decl where
     <*  sepElem myVcat
     <*> traverse ppDeriving mDeriving
   astPretty (GDataDecl _ don mContext hd mkind gadtDecl mDeriving) =
-    resultPretty $ constrElem GDataDecl
+    resultPretty.onsideNest $ constrElem GDataDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*> (annInfoElem $ astPretty don)
       <*  sepElem hsep
       <*> ppContext mContext
@@ -240,9 +239,9 @@ instance PrettyAst Decl where
       where
         identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
   astPretty (DataFamDecl _ mContext head mKind) =
-    resultPretty $ constrElem DataFamDecl
+    resultPretty.onsideNest $ constrElem DataFamDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "data"
       <*  sepElem hsep
       <*  infoElem "family"
@@ -253,9 +252,9 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*> ppOptKind mKind
   astPretty (TypeInsDecl _ tl tr) =
-    resultPretty $ constrElem TypeInsDecl
+    resultPretty.onsideNest $ constrElem TypeInsDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "type"
       <*  sepElem hsep
       <*  infoElem "instance"
@@ -266,9 +265,9 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*> (annInfoElem $ astPretty tr)
   astPretty (DataInsDecl _ don t qConDecl mDeriving) =
-    resultPretty $ constrElem DataInsDecl
+    resultPretty.onsideNest $ constrElem DataInsDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*> (annInfoElem $ astPretty don)
       <*  sepElem hsep
       <*  infoElem "instance"
@@ -280,9 +279,9 @@ instance PrettyAst Decl where
       <*  sepElem myVcat
       <*> traverse ppDeriving mDeriving
   astPretty (GDataInsDecl _ don t mKind gadtDecl mDeriving) =
-    resultPretty $ constrElem GDataInsDecl
+    resultPretty.onsideNest $ constrElem GDataInsDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*> (annInfoElem $ astPretty don)
       <*  sepElem hsep
       <*  infoElem "instance"
@@ -296,9 +295,9 @@ instance PrettyAst Decl where
       <*  sepElem myVcat
       <*> traverse ppDeriving mDeriving
   astPretty (ClassDecl _ mContext head funDep mClassDecl) =
-    resultPretty $ constrElem ClassDecl
+    resultPretty.onsideNest $ constrElem ClassDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "class"
       <*  sepElem hsep
       <*> ppContext mContext
@@ -312,9 +311,9 @@ instance PrettyAst Decl where
         [] -> pure []
         cs -> sepElem fsep *> infoElem "where" *> sepElem myVcat *> ppBody classIndent (noInfoList cs)
   astPretty (InstDecl _ mContext instHead mInstDecl) =
-    resultPretty $ constrElem InstDecl
+    resultPretty.onsideNest $ constrElem InstDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "instance"
       <*  sepElem hsep
       <*> ppContext mContext
@@ -327,9 +326,9 @@ instance PrettyAst Decl where
         [] -> pure []
         is -> sepElem fsep *> infoElem "where" *> sepElem myVcat *> ppBody classIndent (noInfoList is)
   astPretty (DerivDecl _ mContext instHead) =
-    resultPretty $ constrElem DerivDecl
+    resultPretty.onsideNest $ constrElem DerivDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "deriving"
       <*  sepElem hsep
       <*  infoElem "instance"
@@ -338,9 +337,9 @@ instance PrettyAst Decl where
       <* sepElem fsep
       <*> ppInstHeadInDecl instHead
   astPretty (InfixDecl _ assoc mInt op) =
-    resultPretty $ constrElem InfixDecl
+    resultPretty.onsideNest $ constrElem InfixDecl
       <* blankline
-      -- mySep
+      -- mySep1
       <*> (annInfoElem $ astPretty assoc)
       <*  sepElem hsep
       <*> traverseSep (sepElem fsep) (\i -> (infoElem $ show i) *> pure i) mInt
@@ -356,9 +355,9 @@ instance PrettyAst Decl where
       <*  blankline
       <*> (annInfoElem $ astPretty e)
   astPretty (TypeSig _ ns t) =
-    resultPretty $ constrElem TypeSig
+    resultPretty.onsideNest $ constrElem TypeSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <*> intersperse1 (sepElem hsep) (infoElem "," <* sepElem fsep) (noInfoList ns)
       <*  (sepElem $ case ns of [n] -> hsep; _ -> fsep)
       <*  infoElem "::"
@@ -381,9 +380,9 @@ instance PrettyAst Decl where
       <*  sepElem myVcat
       <*> traverse ppWhere mBinds
   astPretty (ForImp _ callConv mSafety mStr n t) =
-    resultPretty $ constrElem ForImp
+    resultPretty.onsideNest $ constrElem ForImp
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "foreign import"
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty callConv)
@@ -395,9 +394,9 @@ instance PrettyAst Decl where
       <*  infoElem "::"
       <*> (annInfoElem $ astPretty t)
   astPretty (ForExp _ callConv mStr n t) =
-    resultPretty $ constrElem ForExp
+    resultPretty.onsideNest $ constrElem ForExp
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "foreign export"
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty callConv)
@@ -438,27 +437,27 @@ instance PrettyAst Decl where
       <*  sepElem hsep
       <*  infoElem "#-}"
   astPretty (InlineSig _ b mActivation qName) =
-    resultPretty $ constrElem InlineSig
+    resultPretty.onsideNest $ constrElem InlineSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <*> pure b <* (infoElem $ if b then "{-# INLINE" else "{-# NOINLINE")
       <*  sepElem hsep
       <*> traverseSep (sepElem fsep) (annInfoElem.astPretty) mActivation
       <*> (annInfoElem $ astPretty qName)
       <*  infoElem "#-}"
   astPretty (InlineConlikeSig _ mActivation qName) =
-    resultPretty $ constrElem InlineConlikeSig
+    resultPretty.onsideNest $ constrElem InlineConlikeSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <* infoElem "{-# INLINE_CONLIKE"
       <*  sepElem hsep
       <*> traverseSep (sepElem fsep) (annInfoElem.astPretty) mActivation
       <*> (annInfoElem $ astPretty qName)
       <*  infoElem "#-}"
   astPretty (SpecSig _ qName ts) =
-    resultPretty $ constrElem SpecSig
+    resultPretty.onsideNest $ constrElem SpecSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "{-# SPECIALISE"
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty qName)
@@ -469,9 +468,9 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "#-}"
   astPretty (SpecInlineSig _ b mActivation qName ts) =
-    resultPretty $ constrElem SpecInlineSig
+    resultPretty.onsideNest $ constrElem SpecInlineSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "{-# SPECIALISE"
       <*  sepElem hsep
       <*> pure b <* (infoElem $ if b then "INLINE" else "NOINLINE")
@@ -485,9 +484,9 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "#-}"
   astPretty (InstSig _ mContext ih ) =
-    resultPretty $ constrElem InstSig
+    resultPretty.onsideNest $ constrElem InstSig
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "{-# SPECIALISE"
       <*  sepElem hsep
       <*  infoElem "instance"
@@ -497,9 +496,9 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "#-}"
   astPretty (AnnPragma _ annotation) =
-    resultPretty $ constrElem AnnPragma
+    resultPretty.onsideNest $ constrElem AnnPragma
       <*  blankline
-      -- mySep
+      -- mySep1
       <*  infoElem "{-# ANN"
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty annotation)
@@ -544,14 +543,14 @@ ppWarnDepr (ns, txt) = pure (,)
 
 instance PrettyAst DeclHead where
   astPretty (DHead _ n tvs) =
-    -- mySep (pretty n : map pretty tvs)
-    resultPretty $ constrElem DHead
+    -- mySep1
+    resultPretty.onsideNest $ constrElem DHead
       <*> (annInfoElem $ astPretty n)
       <*  sepElem hsep
       <*> intersperse (sepElem fsep) (noInfoList tvs)
   astPretty (DHInfix _ tva n tvb) =
-    -- mySep [pretty tva, pretty n, pretty tvb]
-    resultPretty $ constrElem DHInfix
+    -- mySep1
+    resultPretty.onsideNest $ constrElem DHInfix
       <*> (annInfoElem $ astPretty tva)
       <* sepElem hsep
       <*> (annInfoElem $ astPretty n)
@@ -565,14 +564,14 @@ instance PrettyAst DeclHead where
 
 instance PrettyAst InstHead where
   astPretty (IHead _ qn ts) =
-    resultPretty $ constrElem IHead
-      -- mySep
+    resultPretty.onsideNest $ constrElem IHead
+      -- mySep1
       <*> (annInfoElem $ astPretty qn)
       <*  sepElem hsep
       <*> intersperse (sepElem fsep) (infoList ts)
   astPretty (IHInfix _ ta qn tb) =
-    resultPretty $ constrElem IHInfix
-      -- mySep
+    resultPretty.onsideNest $ constrElem IHInfix
+      -- mySep1
       <*> (annInfoElem $ astPretty ta)
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty qn)
@@ -639,8 +638,8 @@ ppWhere (IPBinds _ b)  = nest 2 $ constrElem IPBinds <* infoElem "where" <* sepE
 instance PrettyAst ClassDecl where
   astPretty (ClsDecl _ d) = resultPretty $ constrElem ClsDecl <*> (annInfoElem $ astPretty d)
   astPretty (ClsDataFam _ context dh optkind) =
-    resultPretty $ constrElem ClsDataFam
-      -- mySep
+    resultPretty.onsideNest $ constrElem ClsDataFam
+      -- mySep1
       <*  infoElem "data"
       <*  sepElem hsep
       <*> ppContext context
@@ -649,16 +648,16 @@ instance PrettyAst ClassDecl where
       <*  sepElem fsep
       <*> ppOptKind optkind
   astPretty (ClsTyFam _ dh optkind)  =
-    resultPretty $ constrElem ClsTyFam
-      -- mySep
+    resultPretty.onsideNest $ constrElem ClsTyFam
+      -- mySep1
       <*  infoElem "type"
       <*  sepElem hsep
       <*> ppFsepDhead dh
       <*  sepElem fsep
       <*> ppOptKind optkind
   astPretty (ClsTyDef _ ntype htype) =
-    resultPretty $ constrElem ClsTyDef
-      -- mySep
+    resultPretty.onsideNest $ constrElem ClsTyDef
+      -- mySep1
       <*> (annInfoElem $ astPretty ntype)
       <*  sepElem hsep
       <*  infoElem "="
@@ -669,18 +668,19 @@ instance PrettyAst ClassDecl where
 
 instance PrettyAst InstDecl where
   astPretty (InsDecl _ decl) = resultPretty $ constrElem InsDecl <*> (annInfoElem $ astPretty decl)
-  astPretty (InsType _ ntype htype) = resultPretty $ constrElem InsType
-    -- mySep
-    <*  infoElem "type"
-    <*  sepElem hsep
-    <*> (annInfoElem $ astPretty ntype)
-    <*  sepElem fsep
-    <*  infoElem "="
-    <*  sepElem fsep
-    <*> (annInfoElem $ astPretty htype)
+  astPretty (InsType _ ntype htype) =
+    resultPretty.onsideNest $ constrElem InsType
+      -- mySep1
+      <*  infoElem "type"
+      <*  sepElem hsep
+      <*> (annInfoElem $ astPretty ntype)
+      <*  sepElem fsep
+      <*  infoElem "="
+      <*  sepElem fsep
+      <*> (annInfoElem $ astPretty htype)
   astPretty (InsData _ don ntype constrList derives) =
-    resultPretty $ constrElem InsData
-      -- mySep
+    resultPretty.onsideNest $ constrElem InsData
+      -- mySep1
       <*> (annInfoElem $ astPretty don)
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty ntype)
@@ -692,8 +692,8 @@ instance PrettyAst InstDecl where
         constrSep1 = infoElem "=" <* sepElem hsep
         constrSep2 = sepElem myVcat <* infoElem "|" <* sepElem hsep
   astPretty (InsGData _ don ntype optkind gadtList derives) =
-    resultPretty $ constrElem InsGData
-      -- mySep
+    resultPretty.onsideNest $ constrElem InsGData
+      -- mySep1
       <*> (annInfoElem $ astPretty don)
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty ntype)
@@ -725,8 +725,8 @@ instance PrettyAst CallConv where
 
 instance PrettyAst Rule where
   astPretty (Rule _ tag activ rvs rhs lhs) =
-    resultPretty $ constrElem Rule
-    -- mySep
+    resultPretty.onsideNest $ constrElem Rule
+    -- mySep1
       <*> infoElem tag
       <*  sepElem hsep
       <*> traverse (annInfoElem.astPretty) activ
@@ -740,7 +740,7 @@ instance PrettyAst Rule where
       <*> (annInfoElem $ astPretty lhs)
 
 ppRuleVars []  = pure []
-ppRuleVars rvs = infoElem "forall" *> sepElem hsep *> intersperse (sepElem fsep) (noInfoList rvs) <* infoElem "."
+ppRuleVars rvs = onsideNest $ infoElem "forall" *> sepElem hsep *> intersperse (sepElem fsep) (noInfoList rvs) <* infoElem "."
 
 -- --------------------------------------------------------------------------
 
@@ -753,7 +753,8 @@ instance PrettyAst Activation where
 instance PrettyAst RuleVar where
     astPretty (RuleVar _ n) = resultPretty $ constrElem RuleVar <*> (annInfoElem $ astPretty n)
     astPretty (TypedRuleVar _ n t) =
-      resultPretty.parens $ constrElem TypedRuleVar
+      resultPretty.onsideNest.parens $ constrElem TypedRuleVar
+        -- mySep1
         <*  sepElem hsep
         <*> (annInfoElem $ astPretty n)
         <*  sepElem fsep
@@ -850,8 +851,8 @@ instance PrettyAst ConDecl where
       <*> (annInfoElem $ astPretty name)
       <*> braceList (noInfoList fieldList)
   astPretty (ConDecl _ name typeList) =
-    resultPretty $ constrElem ConDecl
-    -- mySep
+    resultPretty.onsideNest $ constrElem ConDecl
+    -- mySep1
       <*> annInfoElem (ppName name)
       <*  sepElem hsep
       <*> intersperse (sepElem fsep) (map (annNoInfoElem.astPrettyPrec prec_atype) typeList)
@@ -914,8 +915,8 @@ ppDeriving (Deriving _ is) = infoElem "deriving"
     ppIheads = case iheads of
       [(qn, [])] -> [constrElem IHead <*> (annNoInfoElem $ astPretty qn) <*> pure []]
       _ -> map ppDer iheads
-    ppDer (qn, ts) = constrElem IHead
-      -- mySep
+    ppDer (qn, ts) = onsideNest $ constrElem IHead
+      -- mySep1
       <*> (annNoInfoElem $ astPretty qn)
       <*  sepElem hsep
       <*> intersperse parenListSep (noInfoList ts)
@@ -1893,9 +1894,9 @@ instance PrettyAst  CName where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Context where
-  astPretty (CxEmpty _) = resultPretty $ constrElem CxEmpty <* infoElem "()" <* sepElem hsep <* infoElem "=>"
+  astPretty (CxEmpty _) = resultPretty.onsideNest $ constrElem CxEmpty <* infoElem "()" <* sepElem hsep <* infoElem "=>"
   astPretty (CxSingle _ asst) =
-    resultPretty $ constrElem CxSingle
+    resultPretty.onsideNest $ constrElem CxSingle
       <*> (annNoInfoElem $ astPretty asst) <* sepElem hsep <* infoElem "=>"
   astPretty (CxTuple _ assts) =
     resultPretty $ constrElem CxTuple
@@ -1907,9 +1908,7 @@ instance PrettyAst Context where
 ppContext :: Maybe (Context a) -> AstElem (Maybe (Context SrcSpanInfo))
 ppContext context = traverse impl context
   where
-    impl c = (parens $ (annInfoElem $ astPretty c))
-      <*  sepElem hsep
-      <*  infoElem "=>"
+    impl c = onsideNest $ (parens $ (annInfoElem $ astPretty c)) <*  sepElem hsep <*  infoElem "=>"
 
 -- --------------------------------------------------------------------------
 -- hacked for multi-parameter type classes
@@ -2013,14 +2012,18 @@ intersperse1 _ _ [] = pure []
 intersperse1 sFrst sep [e] = sequenceA [e]
 intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (sep *>) es)
 
+nest :: Int -> AstElem a -> AstElem a
 nest n a = (sepElem $ impl n) *> a <* (sepElem $ impl (-n))
   where
---    impl :: MonadState DocState m => Int -> m ()
     impl x = do
       DocState l n <- get
       put $! DocState l $ 1 + n + x
       return ()
 
+onsideNest :: AstElem b -> AstElem b
+onsideNest x = do
+  PrettyMode m _  <- ask
+  nest (onsideIndent m) x
 
 traverseSep sep f m = traverse (\e -> f e <* sep) m
 
