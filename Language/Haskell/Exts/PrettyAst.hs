@@ -33,6 +33,7 @@ defDocState fl = DocState (SrcLoc fl  1  1) 0
 data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 defPrettyMode = PrettyMode PR.defaultMode PR.style
 
+
 type DocM = ReaderT PrettyMode (State DocState)
 
 -- | render the document with a given file name and mode.
@@ -85,6 +86,18 @@ instance PrettyAst ModuleHead where
       <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbWarn
       <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbExportList
       <*  infoElem "where"
+
+--cdd :: ModuleHead a -> WriterT [SrcSpan] DocM (ModuleHead SrcSpanInfo)
+cdd :: ModuleHead a -> AstElem (ModuleHead SrcSpanInfo)
+cdd (ModuleHead _ m mbWarn mbExportList) =
+  constrElem ModuleHead
+    <*  infoElem "module"
+    <*  sepElem hsep
+    <*> (annNoInfoElem $ astPretty m)
+    <*  sepElem fsep
+    <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbWarn
+    <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbExportList
+    <*  infoElem "where"
 
 -- --------------------------------------------------------------------------
 
@@ -608,14 +621,9 @@ instance PrettyAst Match where
           let
             op  = infoElem $ if null pbs' then "" else "("
             cp  = infoElem $ if null pbs' then "" else ")"
-            l'   = op *> (annInfoElem $ astPretty l)
-            r'   = cp *> (annInfoElem $ astPretty r)
-            n'   = annInfoElem $ ppName n
-          in l' `seq` n' `seq` r' `seq` (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
-        _ -> let
-          n'   = (annInfoElem $ astPretty n)
-          pbs' = map (annNoInfoElem.astPrettyPrec 2) pbs
-          in n' `seq` pbs' `seq` (n', pbs')
+            fn  = \l' n' r' -> (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
+          in fn (op *> (annInfoElem $ astPretty l)) (annInfoElem $ ppName n) (cp *> (annInfoElem $ astPretty r))
+        _ -> (annInfoElem $ astPretty n, map (annNoInfoElem.astPrettyPrec 2) pbs)
       res f rhs mWhere = resultPretty $ f
         <*  sepElem myFsep
         <*> (annInfoElem $ astPretty rhs)
