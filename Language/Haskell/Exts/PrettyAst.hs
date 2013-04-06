@@ -357,7 +357,7 @@ instance PrettyAst Decl where
     resultPretty.onsideNest $ constrElem TypeSig
       <*  blankline
       -- mySep
-      <*> intersperse1 (sepElem hsep) (infoElem "," <* sepElem fsep) (noInfoList ns)
+      <*> intersperse (infoElem "," <* sepElem fsep) (noInfoList ns)
       <*  (sepElem $ case ns of [n] -> hsep; _ -> fsep)
       <*  infoElem "::"
       <*> (annInfoElem $ astPretty t)
@@ -531,7 +531,7 @@ ppInstHeadInDecl ih = constrElem IHead
 ppWarnDepr :: PrettyAst ast => ([ast a], String) -> AstElem ([ast SrcSpanInfo], String)
 ppWarnDepr ([], txt) = pure (,) <*> pure []  <*> infoElem txt
 ppWarnDepr (ns, txt) = pure (,)
-  <*> intersperse1 (sepElem hsep) (infoElem "," <* sepElem fsep) (noInfoList ns)
+  <*> intersperse (infoElem "," <* sepElem fsep) (noInfoList ns)
   <*  sep ns
   <*> infoElem txt
   where
@@ -678,18 +678,18 @@ instance PrettyAst InstDecl where
       <*  sepElem fsep
       <*> (annInfoElem $ astPretty htype)
   astPretty (InsData _ don ntype constrList derives) =
-    resultPretty.onsideNest $ constrElem InsData
-      -- mySep
-      <*> (annInfoElem $ astPretty don)
-      <*  sepElem hsep
-      <*> (annInfoElem $ astPretty ntype)
+    resultPretty $ don_ntype (constrElem InsData)
       <*  sepElem fsep
-      <*> intersperse1 constrSep1 constrSep2 (noInfoList constrList)
+      <*> constrList' (noInfoList constrList)
       <*  sepElem myVcat
       <*> traverse ppDeriving derives
       where
-        constrSep1 = infoElem "=" <* sepElem hsep
-        constrSep2 = sepElem myVcat <* infoElem "|" <* sepElem hsep
+        don_ntype f = onsideNest $ f <*> (annInfoElem $ astPretty don) <*  sepElem fsep <*> (annInfoElem $ astPretty ntype)
+        cSep1 = infoElem "=" <* sepElem hsep
+        cSep2 = sepElem myVcat <* infoElem "|" <* sepElem hsep
+        constrList' (e1:e2:es) = sequenceA $ (e1 <* cSep1) : e2 : (map (cSep2 *>) es)
+        constrList' es = sequenceA es
+
   astPretty (InsGData _ don ntype optkind gadtList derives) =
     resultPretty.onsideNest $ constrElem InsGData
       -- mySep
@@ -2005,11 +2005,6 @@ noInfoList xs = map (annNoInfoElem.astPretty) xs
 intersperse :: Applicative f => f a1 -> [f a] -> f [a]
 intersperse _ [] = pure []
 intersperse sep (e:es) = sequenceA $ e : (map (sep *>) es)
-
-intersperse1 :: Applicative f => f a1 -> f a2 -> [f a] -> f [a]
-intersperse1 _ _ [] = pure []
-intersperse1 sFrst sep [e] = sequenceA [e]
-intersperse1 sFrst sep (e1: e2 : es) = sequenceA $ (e1 <* sFrst) : e2 : (map (sep *>) es)
 
 nest :: Int -> AstElem a -> AstElem a
 nest n a = (sepElem $ impl n) *> a <* (sepElem $ impl (-n))
