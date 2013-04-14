@@ -2064,12 +2064,13 @@ hcat = pure ()
 -- fsep prototype
 fsep :: DocM ()
 fsep  = do
-  PrettyMode _ style  <- ask
+  PrettyMode mode style <- ask
   c <- getPos
-  case mode style of
-    PageMode ->
-      if srcColumn c >= lineLength style then line else (pure ())
-    _ -> unimplemented
+  if layout mode == PPOffsideRule || layout mode == PPSemiColon
+  then
+    if srcColumn c >= lineLength style then line else (pure ())
+  else
+    hsep
 
 {-
 a $$$ b = layoutChoice (a vcat) (a <+>) b
@@ -2089,16 +2090,7 @@ myFsepSimple = layoutChoice fsep hsep
 -- same, except that continuation lines are indented,
 -- which is necessary to avoid triggering the offside rule.
 -- myFsep prototype
-myFsep  = layoutChoice fsep' hsep
-  where
-    fsep' = do
-      PrettyMode m style  <- ask
-      let n = onsideIndent m
-      c <- getPos
-      case mode style of
-        PageMode ->
-          if srcColumn c >= lineLength style - n then line else (pure ())
-        _ -> unimplemented
+myFsep  = myFsepSimple
 
 -- --------------------------------------------------------------------------
 -- paren related functions
