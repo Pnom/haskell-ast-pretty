@@ -66,7 +66,7 @@ instance PrettyAst Module where
       <*  sepElem myVcat
       <*> prettyLs decls
       where
-        impl os h i d = Module undefined h os i d
+        impl os h i d = Module annStub h os i d
         vcatList dl = intersperse (sepElem myVcat) $ noInfoList dl
         prettyLs dl = (if isJust mbHead then topLevel else vcatList) dl
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -150,7 +150,7 @@ instance PrettyAst ImportDecl where
       <*  sepElem fsep
       <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbName
       <*> traverseSep (sepElem fsep) (annNoInfoElem.astPretty) mbSpecs
-    where impl s q p m n sp = ImportDecl undefined m q s p n sp
+    where impl s q p m n sp = ImportDecl annStub m q s p n sp
 
 -- --------------------------------------------------------------------------
 
@@ -1854,9 +1854,9 @@ isSymbolName _ = False
 getName :: QName l -> Name l
 getName (UnQual _ s) = s
 getName (Qual _ _ s) = s
-getName (Special _ (Cons _)) = Symbol undefined ":"
-getName (Special _ (FunCon _)) = Symbol undefined  "->"
-getName (Special _ s) = Ident undefined (specialName s)
+getName (Special _ (Cons _)) = Symbol annStub ":"
+getName (Special _ (FunCon _)) = Symbol annStub  "->"
+getName (Special _ s) = Ident annStub (specialName s)
 
 specialName :: SpecialCon l -> String
 specialName (UnitCon _) = "()"
@@ -2001,10 +2001,12 @@ annInfoElem a = do
   tell $ if sp == ep then [] else [mkSrcSpan sp ep]
   return a'
 
+annStub = undefined
+
 unimplemented = undefined
 
 constrElem :: (a -> b) -> AstElem b
-constrElem f = lift.return $ f undefined
+constrElem f = lift.return $ f annStub
 
 infoList xs = map (annInfoElem.astPretty) xs
 noInfoList xs = map (annNoInfoElem.astPretty) xs
