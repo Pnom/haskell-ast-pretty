@@ -1085,8 +1085,8 @@ instance PrettyAst GuardedRhs where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Literal where
-  astPretty (Int _ i s)  = resultPretty $ constrElem Int  <*> pure i <* (infoElem $ show i) <*> pure s
-  astPretty (Char _ c s) = resultPretty $ constrElem Char <*> pure c <* (infoElem $ show c) <*> pure s
+  astPretty (Int _ i s)  = resultPretty $ constrElem Int  <*> pure i <* (noInfoElem $ show i) <*> pure s
+  astPretty (Char _ c s) = resultPretty $ constrElem Char <*> pure c <* (noInfoElem $ show c) <*> pure s
   astPretty (String _ s s') = resultPretty $ constrElem String <*> pure s <* (infoElem $ show s) <*> pure s'
   astPretty (Frac _ r s)    = resultPretty $ constrElem Frac <*> pure r <* (infoElem.show $ fromRational r) <*> pure s
   -- GHC unboxed literals:
@@ -1106,15 +1106,15 @@ instance PrettyAst Literal where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Exp where
-  astPrettyPrec _ (Lit _ l) = resultPretty $ constrElem Lit <*> (annInfoElem $ astPretty l)
+  astPrettyPrec _ (Lit _ l) = resultPretty $ constrElem Lit <*> (annNoInfoElem $ astPretty l)
   -- lambda stuff
   astPrettyPrec p (InfixApp _ a op b) = resultPretty . parensIf (p > 2) $
     constrElem InfixApp
-      <*> annInfoElem (astPrettyPrec 2 a)
+      <*> annNoInfoElem (astPrettyPrec 2 a)
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty op)
+      <*> (annNoInfoElem $ astPretty op)
       <*  sepElem myFsep
-      <*> annInfoElem (astPrettyPrec 1 b)
+      <*> annNoInfoElem (astPrettyPrec 1 b)
   astPrettyPrec p (NegApp _ e) = resultPretty . parensIf (p > 0) $
     constrElem NegApp
       <*  infoElem "-"
@@ -1142,19 +1142,20 @@ instance PrettyAst Exp where
     resultPretty.parensIf (p > 1) $ constrElem If
       <*  infoElem "if"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty cond)
+      <*> (annNoInfoElem $ astPretty cond)
       <*  sepElem myFsep
       <*  infoElem "then"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty thenexp)
+      <*> (annNoInfoElem $ astPretty thenexp)
+      <*  sepElem myFsep
       <*  infoElem "else"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty elsexp)
+      <*> (annNoInfoElem $ astPretty elsexp)
   astPrettyPrec p (Case _ cond altList) =
     resultPretty.parensIf (p > 1) $ constrElem Case
       <*  infoElem "case"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty cond)
+      <*> (annNoInfoElem $ astPretty cond)
       <*  sepElem myFsep
       <*  infoElem "of"
       <*  sepElem myVcat
@@ -1170,7 +1171,7 @@ instance PrettyAst Exp where
       <*  sepElem myVcat
       <*> ppBody doIndent (noInfoList stmtList)
   -- Constructors & Vars
-  astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (annInfoElem $ astPretty name)
+  astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (annNoInfoElem $ astPretty name)
   astPrettyPrec _ (IPVar _ ipname) = resultPretty $ constrElem IPVar <*> (annInfoElem $ astPretty ipname)
   astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (annInfoElem $ astPretty name)
   astPrettyPrec _ (Tuple _ expList) = resultPretty $ constrElem Tuple
@@ -1699,7 +1700,7 @@ instance PrettyAst Stmt where
     <*  infoElem "<-"
     <*  sepElem hsep
     <*> (annInfoElem $ astPretty from)
-  astPretty (Qualifier _ e) = resultPretty $ constrElem Qualifier <*> (annInfoElem $ astPretty e)
+  astPretty (Qualifier _ e) = resultPretty $ constrElem Qualifier <*> (annPoints $ astPretty e)
   astPretty (LetStmt _ (BDecls _ declList)) =
     resultPretty $ constrElem LetStmt <*> ppLetStmt (constrElem BDecls) declList
   astPretty (LetStmt _ (IPBinds _ bindList)) =
@@ -1818,13 +1819,13 @@ rawQName (Qual _ mn n)  =
     <*> (annNoInfoElem $ astPretty mn)
     <*  infoElem "."
     <*> annInfoElem (ppName n)
-rawQName (UnQual _ n)   = resultPretty $ constrElem UnQual <*> annInfoElem (ppName n)
+rawQName (UnQual _ n)   = resultPretty $ constrElem UnQual <*> annNoInfoElem (ppName n)
 rawQName (Special _ sc) = resultPretty $ constrElem Special <*> (annNoInfoElem $ astPretty sc)
 
 ppQNameInfix :: QName a -> AstElem (QName SrcSpanInfo)
 ppQNameInfix name
-  | isSymbolName (getName name) = annInfoElem $ rawQName name
-  | otherwise = infoElem "`" *> annInfoElem (rawQName name) <* infoElem "`"
+  | isSymbolName (getName name) = annNoInfoElem $ rawQName name
+  | otherwise = infoElem "`" *> annNoInfoElem (rawQName name) <* infoElem "`"
 
 -- --------------------------------------------------------------------------
 
@@ -1999,6 +2000,12 @@ annInfoElem a = do
   a' <- lift a
   ep <- getPos
   tell $ if sp == ep then [] else [mkSrcSpan sp ep]
+  return a'
+
+annPoints  :: (Annotated ast) => DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
+annPoints a = do
+  a' <- lift a
+  tell.srcInfoPoints $ ann a'
   return a'
 
 annStub = undefined
