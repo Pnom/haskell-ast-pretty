@@ -69,8 +69,8 @@ instance PrettyAst Module where
         impl os h i d = Module undefined h os i d
         vcatList dl = intersperse (sepElem myVcat) $ noInfoList dl
         prettyLs dl = (if isJust mbHead then topLevel else vcatList) dl
-  astPretty (XmlPage _ _mn os n attrs mattr cs) = undefined
-  astPretty (XmlHybrid _ mbHead os imp decls n attrs mattr cs) = undefined
+  astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
+  astPretty (XmlHybrid _ mbHead os imp decls n attrs mattr cs) = unimplemented
 
 --------------------------  Module Header ------------------------------
 
@@ -1276,7 +1276,7 @@ instance PrettyAst Exp where
       <*> infoElem qt
       <*  infoElem "|]"
   -- Hsx
-  astPrettyPrec _ (XTag _ n attrs mattr cs) = undefined
+  astPrettyPrec _ (XTag _ n attrs mattr cs) = unimplemented
   astPrettyPrec _ (XETag _ n attrs mattr) =
     resultPretty $ constrElem XETag
       -- myFsep
@@ -1527,7 +1527,7 @@ instance PrettyAst Pat where
       <*> pure k <* infoElem (show k)
   -- HaRP
   astPrettyPrec _ (PRPat _ rs) = resultPretty $ constrElem PRPat <*> bracketList (noInfoList rs)
-  astPrettyPrec _ (PXTag _ n attrs mattr cp) = undefined
+  astPrettyPrec _ (PXTag _ n attrs mattr cp) = unimplemented
   astPrettyPrec _ (PXETag _ n attrs mattr) =
     resultPretty $ constrElem PXETag
     -- myFsep
@@ -2001,6 +2001,8 @@ annInfoElem a = do
   tell $ if sp == ep then [] else [mkSrcSpan sp ep]
   return a'
 
+unimplemented = undefined
+
 constrElem :: (a -> b) -> AstElem b
 constrElem f = lift.return $ f undefined
 
@@ -2058,7 +2060,7 @@ fsep  = do
   case mode style of
     PageMode ->
       if srcColumn c >= lineLength style then line else (pure ())
-    _ -> undefined
+    _ -> unimplemented
 
 {-
 a $$$ b = layoutChoice (a vcat) (a <+>) b
@@ -2087,7 +2089,7 @@ myFsep  = layoutChoice fsep' hsep
       case mode style of
         PageMode ->
           if srcColumn c >= lineLength style - n then line else (pure ())
-        _ -> undefined
+        _ -> unimplemented
 
 -- --------------------------------------------------------------------------
 -- paren related functions
