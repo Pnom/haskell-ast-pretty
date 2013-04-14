@@ -2137,11 +2137,11 @@ parensIf p d = if p then parens d else d
 -- case the first doc begins with "-", which would be scanned as {-
 
 flatBlock  :: [AstElem a] -> AstElem [a]
-flatBlock xs = infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem hsep) xs <* infoElem "}"
+flatBlock xs = braces $ sepElem hsep *> intersperse (infoElem ";") xs
 
 -- Same, but put each thing on a separate line
 prettyBlock :: [AstElem a] -> AstElem [a]
-prettyBlock xs = infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) xs <* infoElem "}"
+prettyBlock xs = braces $ sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) xs
 
 -- --------------------------------------------------------------------------
 -- general utils
