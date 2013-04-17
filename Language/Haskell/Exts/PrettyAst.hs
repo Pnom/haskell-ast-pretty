@@ -2007,6 +2007,9 @@ infoElem s = annInfoElem $ format s >> return s
 noInfoElem :: String -> AstElem String
 noInfoElem s = annNoInfoElem $  format s >> return s
 
+implicitElem :: String -> AstElem ()
+implicitElem s = annInfoElem $ format "" >> return ()
+
 sepElem :: DocM() -> AstElem ()
 sepElem s = annNoInfoElem s
 
@@ -2179,7 +2182,7 @@ ppBody f dl =  do
     PPSemiColon   -> indentExplicit i
     _ -> flatBlock dl
   where
-    indent i = nest i $ intersperse (sepElem vcat) dl
+    indent i = nest i $ implicitElem "{" *> intersperse (sepElem vcat <* implicitElem "}") dl
     indentExplicit i = nest i $ prettyBlock dl
 
 topLevel :: (Annotated ast, PrettyAst ast) => [ast a] -> AstElem [ast SrcSpanInfo]
@@ -2187,7 +2190,7 @@ topLevel dl = do
   PrettyMode mode _ <- ask
   let dl' = noInfoList dl
   case layout mode of
-    PPOffsideRule -> sepElem vcat *> intersperse (sepElem myVcat) dl'
+    PPOffsideRule -> sepElem vcat *> intersperse (sepElem vcat) dl'
     PPSemiColon -> sepElem vcat *> prettyBlock dl'
     PPInLine -> sepElem vcat *> prettyBlock dl'
     PPNoLayout -> sepElem hsep *> flatBlock dl'
