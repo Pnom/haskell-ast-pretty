@@ -1995,7 +1995,7 @@ putPos l = do
 line :: MonadState DocState m => m ()
 line = do
   DocState (SrcLoc f l c) n <- get
-  putPos $! SrcLoc f (l + 1) (if n > 0 then n else 1)
+  putPos $! SrcLoc f (l + 1) (n + 1)
   return ()
 
 space :: MonadState DocState m => Int -> m ()
@@ -2030,7 +2030,7 @@ annInfoElem a = do
   sp <- getPos
   a' <- lift a
   ep <- getPos
-  tell $ if sp == ep then [] else [mkSrcSpan sp ep]
+  tell [mkSrcSpan sp ep]
   return a'
 
 annPoints  :: (Annotated ast) => DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
@@ -2058,7 +2058,7 @@ nest n a = (sepElem $ impl n) *> a <* (sepElem $ impl (-n))
   where
     impl x = do
       DocState l n <- get
-      put $! DocState l $ 1 + n + x
+      put $! DocState l (n + x)
       return ()
 
 onsideNest :: AstElem a -> AstElem a
@@ -2097,7 +2097,7 @@ fsep  = do
   c <- getPos
   if layout mode == PPOffsideRule || layout mode == PPSemiColon
   then
-    if srcColumn c >= lineLength style then line else (pure ())
+    if srcColumn c >= lineLength style then line else hsep
   else
     hsep
 
