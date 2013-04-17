@@ -87,18 +87,6 @@ instance PrettyAst ModuleHead where
       <*  sepElem fsep
       <*  infoElem "where"
 
---cdd :: ModuleHead a -> WriterT [SrcSpan] DocM (ModuleHead SrcSpanInfo)
-cdd :: ModuleHead a -> AstElem (ModuleHead SrcSpanInfo)
-cdd (ModuleHead _ m mbWarn mbExportList) =
-  constrElem ModuleHead
-    <*  infoElem "module"
-    <*  sepElem hsep
-    <*> (annNoInfoElem $ astPretty m)
-    <*> traverse (\x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbWarn
-    <*> traverse (\x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbExportList
-    <*  sepElem fsep
-    <*  infoElem "where"
-
 -- --------------------------------------------------------------------------
 
 instance PrettyAst WarningText where
