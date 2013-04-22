@@ -25,10 +25,11 @@ import Data.Traversable
 
 data DocState = DocState {
   pos :: !SrcLoc,
-  nestSize :: !Int
+  nestSize :: !Int,
+  traceArr :: ![String]
   } deriving Show
 
-defDocState fl = DocState (SrcLoc fl  1  1) 0
+defDocState fl = DocState (SrcLoc fl  1  1) 0 []
 
 data PrettyMode = PrettyMode PR.PPHsMode PR.Style
 defPrettyMode = PrettyMode PR.defaultMode PR.style
@@ -1977,14 +1978,21 @@ getPos = gets pos
 
 putPos :: MonadState DocState m => SrcLoc -> m SrcLoc
 putPos l = do
-  DocState _ n <- get
-  put $! DocState l n
+  DocState _ n t <- get
+  put $! DocState l n t
   return l
 
 line :: MonadState DocState m => m ()
 line = do
-  DocState (SrcLoc f l c) n <- get
+  DocState (SrcLoc f l c) n _ <- get
   putPos $! SrcLoc f (l + 1) (n + 1)
+  return ()
+
+traceAst :: MonadState DocState m => String -> m ()
+traceAst s = do
+  DocState l n t <- get
+  let msg = "l = " ++ show (srcLine l) ++ "c = " ++ show (srcColumn l) ++ ": " ++ s
+  put $! DocState l n (t ++ [msg])
   return ()
 
 space :: MonadState DocState m => Int -> m ()
@@ -2049,8 +2057,8 @@ nest :: Int -> AstElem a -> AstElem a
 nest n a = (sepElem $ impl n) *> a <* (sepElem $ impl (-n))
   where
     impl x = do
-      DocState l n <- get
-      put $! DocState l (n + x)
+      DocState l n t <- get
+      put $! DocState l (n + x) t
       return ()
 
 onsideNest :: AstElem a -> AstElem a
@@ -2071,7 +2079,7 @@ resultPretty a = do
 
 vcat :: DocM ()
 vcat = do
-  DocState (SrcLoc f l c) n <- get
+  DocState (SrcLoc f l c) n _ <- get
   let s = if n < c then line else space $ n - c
   _ <- s
   return ()
@@ -2197,7 +2205,6 @@ topLevel dl = do
     PPSemiColon -> sepElem vcat *> prettyBlock dl'
     PPInLine -> sepElem vcat *> prettyBlock dl'
     PPNoLayout -> sepElem hsep *> flatBlock dl'
-
 
 -- --------------------------------------------------------------------------
 -- simplify utils
