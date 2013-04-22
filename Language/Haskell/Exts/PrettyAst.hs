@@ -886,16 +886,16 @@ ppDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
 ppDeriving (Deriving _ []) = constrElem Deriving <*> pure []
 ppDeriving (Deriving _ is) = infoElem "deriving"
   *> sepElem hsep
-  *> (parensIf useParen $ constrElem Deriving <*> sequenceA ppIheads)
+  *> (parensIf useParen $ annInfoElem.resultPretty $ constrElem Deriving <*> sequenceA ppIheads)
   where
     iheads = map sInstHead is
     useParen = case iheads of
       [(qn, [])] -> False
       _ -> True
     ppIheads = case iheads of
-      [(qn, [])] -> [constrElem IHead <*> (annNoInfoElem $ astPretty qn) <*> pure []]
+      [(qn, [])] -> [annInfoElem.resultPretty $ constrElem IHead <*> (annNoInfoElem $ astPretty qn) <*> pure []]
       _ -> map ppDer iheads
-    ppDer (qn, ts) = onsideNest $ constrElem IHead
+    ppDer (qn, ts) = onsideNest $ annInfoElem.resultPretty $ constrElem IHead
       -- mySep
       <*> (annNoInfoElem $ astPretty qn)
       <*  sepElem fsep
@@ -1638,8 +1638,8 @@ instance PrettyAst RPat where
    -- special case that would otherwise be buggy
   astPretty (RPAs _ n (RPPat _ (PIrrPat _ p))) =
     let
-      ip = constrElem PIrrPat <*> (annInfoElem $ astPretty p)
-      rp = constrElem RPPat   <*> ip
+      ip = annInfoElem.resultPretty $ constrElem PIrrPat <*> (annInfoElem $ astPretty p)
+      rp = annInfoElem.resultPretty $ constrElem RPPat   <*> ip
     in
       resultPretty.onsideNest $ constrElem RPAs
       -- myFsep
