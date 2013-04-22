@@ -758,16 +758,15 @@ instance PrettyAst ModulePragma where
   astPretty (OptionsPragma _ mbTool s) = do
     -- myFsep
     let
-      opt = "{-# OPTIONS_" ++ case mbTool of
-        Nothing -> ""
-        Just (UnknownTool u) -> show u
-        Just tool -> show tool in
+      opt = "{-# OPTIONS" ++ case mbTool of
+        Nothing -> " "
+        Just (UnknownTool u) -> "_" ++ show u
+        Just tool -> "_" ++ show tool
+      in         
       resultPretty.onsideNest $ constrElem OptionsPragma
         <*> pure mbTool
         <*  infoElem opt
-        <*  sepElem myFsep
-        <*> infoElem s
-        <*  sepElem myFsep
+        <*> encloseIf (not $ null s) (sepElem myFsep ) (sepElem myFsep) (noInfoElem s)
         <*  infoElem "#-}"
   astPretty (AnnModulePragma _ ann) =
     resultPretty.onsideNest $ constrElem AnnModulePragma
