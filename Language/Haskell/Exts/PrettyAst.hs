@@ -2171,11 +2171,9 @@ layoutChoice a b  = do
 blankline :: AstElem ()
 blankline = do
   PrettyMode mode _ <- ask
-  if spacing mode && layout mode /= PPNoLayout
-      then
-        sepElem hsep <* sepElem vcat
-      else
-        sepElem (pure ())
+  sepElem $ if spacing mode && layout mode /= PPNoLayout
+    then line
+    else pure ()
 
 ppBody :: (PR.PPHsMode -> Int) -> [AstElem a] -> AstElem [a]
 ppBody f dl =  do
