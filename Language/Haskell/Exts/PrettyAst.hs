@@ -100,7 +100,7 @@ instance PrettyAst WarningText where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst ModuleName where
-  astPretty (ModuleName _ s) = resultPretty $ constrElem ModuleName <*> infoElem s
+  astPretty (ModuleName _ s) = resultPretty $ constrElem ModuleName <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
@@ -114,7 +114,7 @@ instance PrettyAst ExportSpec where
   astPretty (EVar _ name) = resultPretty $ constrElem EVar <*> (annNoInfoElem $ astPretty name)
   astPretty (EAbs _ name) = resultPretty $ constrElem EAbs <*> (annNoInfoElem $ astPretty name)
   astPretty (EThingAll _ name) =
-    resultPretty $ constrElem EThingAll <*> (annNoInfoElem $ astPretty name) <* infoElem "(..)"
+    resultPretty $ constrElem EThingAll <*> (annNoInfoElem $ astPretty name) <* infoElem "(" <* infoElem ".." <* infoElem ")"
   astPretty (EThingWith _ name nameList) =
     resultPretty $ constrElem EThingWith
       <*> (annNoInfoElem $ astPretty name)
@@ -129,13 +129,13 @@ instance PrettyAst ImportDecl where
       -- mySep
       <*  infoElem "import"
       <*  sepElem fsep
-      <*> pure src <* (infoElem $ if src then "{-# SOURCE #-}" else "")
+      <*> (if src then pure src <* infoElem "{-# SOURCE #-}" else pure src)
       <*  sepElem fsep
-      <*> pure qual <* (infoElem $ if qual then "qualified" else "")
+      <*> (if qual then pure qual <* infoElem "qualified" else pure qual)
       <*> traverse (\x -> sepElem fsep *> infoElem x) mbPkg
       <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty mod)
-      <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbName
+      <*> traverse (\ x -> sepElem fsep *> infoElem "as" *> sepElem hsep *> (annNoInfoElem $ astPretty x)) mbName
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbSpecs
     where impl s q p m n sp = ImportDecl annStub m q s p n sp
 
@@ -144,7 +144,7 @@ instance PrettyAst ImportDecl where
 instance PrettyAst ImportSpecList where
   astPretty (ImportSpecList _ b ispecs) =
     resultPretty $ constrElem ImportSpecList
-      <*> pure b <* (infoElem $ if b then "hiding" else "")
+      <*> (if b then pure b <* infoElem "hiding" else pure b)
       <*  sepElem hsep
       <*> parenList (noInfoList ispecs)
 
