@@ -202,8 +202,7 @@ instance PrettyAst Decl where
         <* blankline
         <*> (annInfoElem $ astPretty don)
         <*  sepElem fsep
-        <*> ppContext mContext
-        <*  sepElem fsep
+        <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
         <*> ppFsepDhead head
   astPretty (GDataDecl _ don mContext hd mkind gadtDecl mDeriving) =
     resultPretty $ onsideHead (constrElem GDataDecl)
@@ -217,8 +216,7 @@ instance PrettyAst Decl where
           -- mySep
           <*> (annInfoElem $ astPretty don)
           <*  sepElem fsep
-          <*> ppContext mContext
-          <*  sepElem fsep
+          <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
           <*> ppFsepDhead hd
           <*  sepElem fsep
           <*> ppOptKind mkind
@@ -232,8 +230,7 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "family"
       <*  sepElem fsep
-      <*> ppContext mContext
-      <*  sepElem fsep
+      <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppFsepDhead head
       <*  sepElem fsep
       <*> ppOptKind mKind
@@ -290,8 +287,7 @@ instance PrettyAst Decl where
         -- mySep
         <*  infoElem "class"
         <*  sepElem fsep
-        <*> ppContext mContext
-        <*  sepElem fsep
+        <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
         <*> ppFsepDhead head
         <*  sepElem fsep
         <*> ppFunDeps funDep
@@ -305,8 +301,7 @@ instance PrettyAst Decl where
         -- mySep
         <*  infoElem "instance"
         <*  sepElem fsep
-        <*> ppContext mContext
-        <*  sepElem fsep
+        <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
         <*> ppInstHeadInDecl instHead
         <*  if null $ fromMaybe [] mInstDecl then infoElem "" else (sepElem fsep *> infoElem "where" <* sepElem myVcat)
   astPretty (DerivDecl _ mContext instHead) =
@@ -317,8 +312,7 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "instance"
       <* sepElem fsep
-      <*> ppContext mContext
-      <* sepElem fsep
+      <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppInstHeadInDecl instHead
   astPretty (InfixDecl _ assoc mInt op) =
     resultPretty.onsideNest $ constrElem InfixDecl
@@ -627,8 +621,7 @@ instance PrettyAst ClassDecl where
       -- mySep
       <*  infoElem "data"
       <*  sepElem fsep
-      <*> ppContext context
-      <*  sepElem fsep
+      <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) context
       <*> ppFsepDhead dh
       <*  sepElem fsep
       <*> ppOptKind optkind
@@ -763,7 +756,7 @@ instance PrettyAst ModulePragma where
         Nothing -> " "
         Just (UnknownTool u) -> "_" ++ show u
         Just tool -> "_" ++ show tool
-      in         
+      in
       resultPretty.onsideNest $ constrElem OptionsPragma
         <*> pure mbTool
         <*  infoElem opt
@@ -805,12 +798,11 @@ instance PrettyAst Annotation where
 ------------------------- Data & Newtype Bodies -------------------------
 
 instance PrettyAst QualConDecl where
-  astPretty (QualConDecl _ mtvs mctxt con) =
+  astPretty (QualConDecl _ mtvs mContext con) =
     -- myFsep
     resultPretty.onsideNest $ constrElem QualConDecl
       <*> traverse (\ x -> (ppForall $ noInfoList x) <* sepElem myFsep) mtvs
-      <*> ppContext mctxt
-      <*  sepElem myFsep
+      <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> (annInfoElem $ astPretty con)
 
 -- --------------------------------------------------------------------------
@@ -921,13 +913,12 @@ prec_btype = 1  -- left argument of ->,
 prec_atype = 2  -- argument of type or data constructor, or of a class
 
 instance PrettyAst Type where
-  astPrettyPrec p (TyForall _ mtvs ctxt htype) = resultPretty $ onsideNest t
-    where
-      t = parensIf (p > 0) $ constrElem TyForall
+  astPrettyPrec p (TyForall _ mtvs ctxt htype) =
+    resultPretty.onsideNest $
+      parensIf (p > 0) $ constrElem TyForall
         -- myFsep
         <*> traverse (\ x -> (ppForall $ noInfoList x) <* sepElem myFsep) mtvs
-        <*> ppContext ctxt
-        <* sepElem myFsep
+        <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem myFsep) ctxt
         <*> (annNoInfoElem $ astPretty htype)
   astPrettyPrec p (TyFun _ a b) = resultPretty $ onsideNest t
     where
@@ -1926,11 +1917,6 @@ instance PrettyAst Context where
       <* sepElem myFsep
       <* infoElem "=>"
   astPretty (CxParen _ asst) = resultPretty $ constrElem CxParen <*> enclose (infoElem "(") (infoElem ")") ((annNoInfoElem $ astPretty asst))
-
-ppContext :: Maybe (Context a) -> AstElem (Maybe (Context SrcSpanInfo))
-ppContext context = traverse impl context
-  where
-    impl c = onsideNest $ (parens $ (annNoInfoElem $ astPretty c)) <*  sepElem fsep <*  noInfoElem "=>"
 
 -- --------------------------------------------------------------------------
 -- hacked for multi-parameter type classes
