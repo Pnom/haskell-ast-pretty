@@ -567,15 +567,15 @@ instance PrettyAst InstHead where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst DataOrNew where
-  astPretty (DataType _) = resultPretty $ constrElem DataType <* infoElem "data"
-  astPretty (NewType  _) = resultPretty $ constrElem NewType <* infoElem "newtype"
+  astPretty (DataType _) = resultPretty $ constrElem DataType <* noInfoElem "data"
+  astPretty (NewType  _) = resultPretty $ constrElem NewType  <* noInfoElem "newtype"
 
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Assoc where
-  astPretty (AssocNone  _) = resultPretty $ constrElem AssocNone  <* infoElem "infix"
-  astPretty (AssocLeft  _) = resultPretty $ constrElem AssocLeft  <* infoElem "infixl"
-  astPretty (AssocRight _) = resultPretty $ constrElem AssocRight <* infoElem "infixr"
+  astPretty (AssocNone  _) = resultPretty $ constrElem AssocNone  <* noInfoElem "infix"
+  astPretty (AssocLeft  _) = resultPretty $ constrElem AssocLeft  <* noInfoElem "infixl"
+  astPretty (AssocRight _) = resultPretty $ constrElem AssocRight <* noInfoElem "infixr"
 
 -- --------------------------------------------------------------------------
 
