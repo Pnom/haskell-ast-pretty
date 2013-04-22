@@ -1929,7 +1929,7 @@ instance PrettyAst Context where
 ppContext :: Maybe (Context a) -> AstElem (Maybe (Context SrcSpanInfo))
 ppContext context = traverse impl context
   where
-    impl c = onsideNest $ (parens $ (annInfoElem $ astPretty c)) <*  sepElem fsep <*  infoElem "=>"
+    impl c = onsideNest $ (parens $ (annNoInfoElem $ astPretty c)) <*  sepElem fsep <*  noInfoElem "=>"
 
 -- --------------------------------------------------------------------------
 -- hacked for multi-parameter type classes
