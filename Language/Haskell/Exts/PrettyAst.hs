@@ -343,7 +343,7 @@ instance PrettyAst Decl where
       <*> intersperse (infoElem "," <* sepElem fsep) (noInfoList ns)
       <*  (sepElem $ case ns of [n] -> hsep; _ -> fsep)
       <*  infoElem "::"
-      <*> (annInfoElem $ astPretty t)
+      <*> (annNoInfoElem $ astPretty t)
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
       <*> intersperse sep (noInfoList ms)
@@ -357,10 +357,10 @@ instance PrettyAst Decl where
       (
         onsideNest $ constrElem PatBind
         -- myFsep
-        <*> (annInfoElem $ astPretty pat)
-        <*> traverse (\x -> (sepElem myFsep) *> infoElem "::" *> sepElem hsep *> (annInfoElem.astPretty) x) mType
+        <*> (annNoInfoElem $ astPretty pat)
+        <*> traverse (\x -> (sepElem myFsep) *> infoElem "::" *> sepElem hsep *> (annNoInfoElem.astPretty) x) mType
         <*  sepElem myFsep
-        <*> (annInfoElem $ astPretty rhs)
+        <*> (annNoInfoElem $ astPretty rhs)
       )
       <*> traverse (\x -> sepElem myVcat *> ppWhere x) mBinds
   astPretty (ForImp _ callConv mSafety mStr n t) =
