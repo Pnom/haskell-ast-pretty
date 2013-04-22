@@ -612,9 +612,10 @@ instance PrettyAst Match where
         <*> (annInfoElem $ astPretty rhs)
         <*> traverse (\x -> sepElem myVcat *> ppWhere x) mWhere
 
-ppWhere (BDecls  _ []) = constrElem BDecls  <*> pure []
-ppWhere (BDecls  _ l)  = nest 2 $ constrElem BDecls  <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList l)
-ppWhere (IPBinds _ b)  = nest 2 $ constrElem IPBinds <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList b)
+ppWhere :: Binds a -> AstElem (Binds SrcSpanInfo)
+ppWhere (BDecls  _ []) = annInfoElem.resultPretty $ constrElem BDecls  <*> pure []
+ppWhere (BDecls  _ l)  = nest 2 $ annInfoElem.resultPretty $ constrElem BDecls  <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList l)
+ppWhere (IPBinds _ b)  = nest 2 $ annInfoElem.resultPretty $ constrElem IPBinds <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (noInfoList b)
 
 -- --------------------------------------------------------------------------
 
