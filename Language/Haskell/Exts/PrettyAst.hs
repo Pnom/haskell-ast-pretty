@@ -496,7 +496,7 @@ ppConstrList cs = sepElem hsep
   *> intersperse (sepElem hsep *> infoElem "|" *> sepElem myVcat) (noInfoList cs)
 
 ppFsepDhead :: DeclHead a -> AstElem (DeclHead SrcSpanInfo)
-ppFsepDhead dh = constrElem DHead
+ppFsepDhead dh = annInfoElem.resultPretty $ constrElem DHead
   <*> (annInfoElem $ astPretty name)
   <*  sepElem fsep
   <*> intersperse (sepElem fsep) (noInfoList tvs)
@@ -504,7 +504,7 @@ ppFsepDhead dh = constrElem DHead
     (name, tvs) = sDeclHead dh
 
 ppInstHeadInDecl :: InstHead a -> AstElem (InstHead SrcSpanInfo)
-ppInstHeadInDecl ih = constrElem IHead
+ppInstHeadInDecl ih = annInfoElem.resultPretty $ constrElem IHead
   <*> (annInfoElem $ astPretty qn)
   <*  sepElem fsep
   <*> intersperse (sepElem fsep) (map (annNoInfoElem.ppAType) ts)
