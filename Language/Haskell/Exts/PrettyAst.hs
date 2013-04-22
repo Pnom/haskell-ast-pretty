@@ -1907,10 +1907,18 @@ instance PrettyAst  CName where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Context where
-  astPretty (CxEmpty _) = resultPretty.onsideNest $ constrElem CxEmpty <* infoElem "()" <* sepElem fsep <* infoElem "=>"
+  astPretty (CxEmpty _) =
+    resultPretty.onsideNest $ constrElem CxEmpty
+      <* infoElem "("
+      <* infoElem ")"
+      <* sepElem fsep
+      <* infoElem "=>"
   astPretty (CxSingle _ asst) =
     resultPretty.onsideNest $ constrElem CxSingle
-      <*> (annNoInfoElem $ astPretty asst) <* sepElem fsep <* infoElem "=>"
+      <* infoElem "("
+      <*> (annNoInfoElem $ astPretty asst)
+      <* infoElem ")"
+      <* sepElem fsep <* infoElem "=>"
   astPretty (CxTuple _ assts) =
     resultPretty.onsideNest $ constrElem CxTuple
       <*> parenList (noInfoList assts) -- myFsep and parenList -> myFsep and myFsepSimple ???
