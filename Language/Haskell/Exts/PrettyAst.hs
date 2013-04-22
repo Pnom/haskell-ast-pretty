@@ -338,6 +338,7 @@ instance PrettyAst Decl where
       <*> intersperse (infoElem "," <* sepElem fsep) (noInfoList ns)
       <*  (sepElem $ case ns of [n] -> hsep; _ -> fsep)
       <*  infoElem "::"
+      <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty t)
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
@@ -938,15 +939,13 @@ instance PrettyAst Type where
         Unboxed -> hashParenList (noInfoList l)
   astPrettyPrec _ (TyList _ t)  = resultPretty $ constrElem TyList <*> t'
     where t' = enclose (infoElem "[") (infoElem "]") ((annNoInfoElem $ astPretty t))
-  astPrettyPrec  p (TyApp _ a b) = resultPretty $ onsideNest t
-    where
-      t = parensIf (p > prec_btype) $
+  astPrettyPrec  p (TyApp _ a b) =
+    resultPretty.onsideNest $
+      parensIf (p > prec_btype) $
         constrElem TyApp
-        <*  sepElem myFsep
         <*> (annNoInfoElem $ astPretty a)
         <*  sepElem myFsep
-        <*> (annNoInfoElem $ ppAType a)
-        <*   sepElem myFsep
+        <*> (annNoInfoElem $ ppAType b)
   astPrettyPrec _ (TyVar _ t)  = resultPretty $ constrElem TyVar  <*> (annNoInfoElem $ astPretty t)
   astPrettyPrec _ (TyCon _ t)  = resultPretty $ constrElem TyCon <*> (annNoInfoElem $ astPretty t)
   astPrettyPrec _ (TyParen _ t)  = resultPretty $ constrElem TyParen <*> t'
