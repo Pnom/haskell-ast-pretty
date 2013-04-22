@@ -1036,7 +1036,8 @@ instance PrettyAst Rhs where
   astPretty (UnGuardedRhs _ e) =
     resultPretty $ constrElem UnGuardedRhs
       <*  infoElem "="
-      <*> (annInfoElem $ astPretty e)
+      <*  sepElem hsep
+      <*> (annNoInfoElem $ astPretty e)
   astPretty (GuardedRhss _ guardList) =
     resultPretty $ constrElem GuardedRhss
       <*> intersperse (sepElem myVcat) (noInfoList guardList)
