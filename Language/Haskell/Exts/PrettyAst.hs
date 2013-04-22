@@ -2133,6 +2133,8 @@ bracketList xs = brackets $ intersperse (sepElem myFsepSimple) xs
 
 enclose ob cb x = ob *> x <* cb
 
+encloseIf p ob cb x = if p then ob *> x <* cb else x
+
 parens :: AstElem a -> AstElem a
 parens d = infoElem "(" *> d <* infoElem ")"
 
