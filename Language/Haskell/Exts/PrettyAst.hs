@@ -1972,7 +1972,7 @@ line = do
 traceAst :: MonadState DocState m => String -> m ()
 traceAst s = do
   DocState l n t <- get
-  let msg = "l = " ++ show (srcLine l) ++ "c = " ++ show (srcColumn l) ++ ": " ++ s
+  let msg = "l = " ++ show (srcLine l) ++ " c = " ++ show (srcColumn l) ++ " n = " ++ show n ++ " : " ++ s
   put $! DocState l n (t ++ [msg])
   return ()
 
