@@ -2125,13 +2125,13 @@ enclose ob cb x = ob *> x <* cb
 encloseIf p ob cb x = if p then ob *> x <* cb else x
 
 parens :: AstElem a -> AstElem a
-parens d = infoElem "(" *> d <* infoElem ")"
+parens d = noInfoElem "(" *> d <* noInfoElem ")"
 
 braces :: AstElem a -> AstElem a
-braces d = infoElem "{" *> d <* infoElem "}"
+braces d = noInfoElem "{" *> d <* noInfoElem "}"
 
 brackets :: AstElem a -> AstElem a
-brackets d = infoElem "[" *> d <* infoElem "]"
+brackets d = noInfoElem "[" *> d <* noInfoElem "]"
 
 parensIf :: Bool -> AstElem a -> AstElem a
 parensIf p d = if p then parens d else d
