@@ -130,11 +130,9 @@ instance PrettyAst ImportDecl where
       -- mySep
       <*  infoElem "import"
       <*  sepElem fsep
-      <*> (if src then pure src <* infoElem "{-# SOURCE #-}" else pure src)
-      <*  sepElem fsep
-      <*> (if qual then pure qual <* infoElem "qualified" else pure qual)
-      <*> traverse (\x -> sepElem fsep *> infoElem x) mbPkg
-      <*  sepElem fsep
+      <*> (if src then pure src <* infoElem "{-# SOURCE #-}" <* sepElem fsep else pure src)
+      <*> (if qual then pure qual <* infoElem "qualified" <* sepElem fsep else pure qual)
+      <*> traverse (\x -> infoElem x <* sepElem fsep) mbPkg
       <*> (annNoInfoElem $ astPretty mod)
       <*> traverse (\ x -> sepElem fsep *> infoElem "as" *> sepElem hsep *> (annNoInfoElem $ astPretty x)) mbName
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbSpecs
