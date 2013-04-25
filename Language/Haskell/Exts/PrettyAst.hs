@@ -274,7 +274,8 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppInstHeadInDecl instHead
-      <*  (if null $ fromMaybe [] mInstDecl then infoElem "" else sepElem fsep *> infoElem "where" <* sepElem myVcat)
+      <*  sepElem fsep
+      <*  infoElem "where"
       <*> traverse instDecl mInstDecl
     where
       instDecl is = ppBody classIndent (annListElem annNoInfoElem is)
@@ -326,7 +327,7 @@ instance PrettyAst Decl where
         <*  sepElem myFsep
         <*> (annNoInfoElem $ astPretty rhs)
       )
-      <*> traverse (\x -> sepElem myVcat *> ppWhere x) mBinds
+      <*> ppWhere mBinds
   astPretty (ForImp _ callConv mSafety mStr n t) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem ForImp
       -- mySep
@@ -534,22 +535,24 @@ instance PrettyAst Assoc where
 instance PrettyAst Match where
   astPretty m =
     case m of
-      (InfixMatch _ pa n pbs rhs mWhere) -> res hd rhs mWhere
-        where
-          (n', l':pbs') = lhs n (pa:pbs)
-          hd = constrElem InfixMatch
-            <*> l'
-            <*  sepElem myFsep
-            <*> n'
-            <*  sepElem myFsep
-            <*> intersperse (sepElem myFsep) pbs'
-      (Match _ n pbs rhs mWhere) -> res hd rhs mWhere
-        where
-          (n', pbs') = lhs n pbs
-          hd = constrElem Match
-            <*> n'
-            <*  sepElem myFsep
-            <*> intersperse (sepElem myFsep) pbs'
+      (InfixMatch _ pa n pbs rhs mWhere) -> let (n', l':pbs') = lhs n (pa:pbs) in
+        resultPretty.(nestMode onsideIndent) $ constrElem InfixMatch
+          <*> l'
+          <*  sepElem myFsep
+          <*> n'
+          <*  sepElem myFsep
+          <*> intersperse (sepElem myFsep) pbs'
+          <*  sepElemIf (not $ null pbs') myFsep
+          <*> annNoInfoElem (astPretty rhs)
+          <*> ppWhere mWhere
+      (Match _ n pbs rhs mWhere) -> let (n', pbs') = lhs n pbs in
+        resultPretty $ constrElem Match
+          <*> n'
+          <*  sepElem myFsep
+          <*> intersperse (sepElem myFsep) pbs'
+          <*  sepElemIf (not $ null pbs') myFsep
+          <*> annNoInfoElem (astPretty rhs)
+          <*> ppWhere mWhere
     where
       lhs n pbs = case pbs of
         l:r:pbs' | isSymbolName n ->
@@ -557,17 +560,15 @@ instance PrettyAst Match where
             op  = infoElem $ if null pbs' then "" else "("
             cp  = infoElem $ if null pbs' then "" else ")"
             fn  = \l' n' r' -> (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
-          in fn (op *> (annInfoElem $ astPretty l)) (annInfoElem $ ppName n) (cp *> (annInfoElem $ astPretty r))
-        _ -> (annInfoElem $ astPretty n, map (annNoInfoElem.astPrettyPrec 2) pbs)
-      res f rhs mWhere = resultPretty $ f
-        <*  sepElem myFsep
-        <*> (annInfoElem $ astPretty rhs)
-        <*> traverse (\x -> sepElem myVcat *> ppWhere x) mWhere
+          in fn (op *> (annNoInfoElem $ astPretty l)) (annNoInfoElem $ ppName n) (cp *> (annNoInfoElem $ astPretty r))
+        _ -> (annNoInfoElem $ astPretty n, map (annNoInfoElem.astPrettyPrec 2) pbs)
 
-ppWhere :: Binds a -> AstElem (Binds SrcSpanInfo)
-ppWhere (BDecls  _ []) = annInfoElem.resultPretty $ constrElem BDecls  <*> pure []
-ppWhere (BDecls  _ l)  = nest 2 $ annInfoElem.resultPretty $ constrElem BDecls  <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (annListElem annNoInfoElem l)
-ppWhere (IPBinds _ b)  = nest 2 $ annInfoElem.resultPretty $ constrElem IPBinds <* infoElem "where" <* sepElem myVcat <*> ppBody whereIndent (annListElem annNoInfoElem b)
+ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
+ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> sepElem hsep *> impl x) mWhere
+  where
+    impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*> pure []
+    impl (BDecls  _ l)  = annNoInfoElem.resultPretty $ constrElem BDecls  <*> ppBody whereIndent (annListElem annNoInfoElem l)
+    impl (IPBinds _ b)  = annNoInfoElem.resultPretty $ constrElem IPBinds <*> ppBody whereIndent (annListElem annNoInfoElem b)
 
 -- --------------------------------------------------------------------------
 
@@ -1619,12 +1620,12 @@ instance PrettyAst RPatOp where
 ------------------------- Case bodies  -------------------------
 
 instance PrettyAst Alt where
-  astPretty (Alt _ e gAlts binds) =
+  astPretty (Alt _ e gAlts mBinds) =
     resultPretty $ constrElem Alt
       <*> (annNoInfoElem $ astPretty e)
       <*  sepElem hsep
       <*> (annNoInfoElem $ astPretty gAlts)
-      <*> traverse (\x -> sepElem myVcat *> ppWhere x) binds
+      <*> ppWhere mBinds
 
 -- --------------------------------------------------------------------------
 
