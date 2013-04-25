@@ -1364,8 +1364,6 @@ ppLetExp f l b = (nestMode onsideIndent) $ constrElem Let
   <*  infoElem "in"
   <*> (annInfoElem $ astPretty b)
 
-ppWith f binds = nest 2 $ f <* infoElem "with" <* sepElem myVcat <*> ppBody withIndent (annListElem annNoInfoElem binds)
-withIndent = whereIndent
 
 --------------------- Template Haskell -------------------------
 
