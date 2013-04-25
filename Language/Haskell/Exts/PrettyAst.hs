@@ -1657,12 +1657,13 @@ instance PrettyAst GuardedAlt where
 
 instance PrettyAst Stmt where
   astPretty (Generator _ e from) = resultPretty $ constrElem Generator
-    <*> (annInfoElem $ astPretty e)
+    <*> annNoInfoElem (astPretty e)
     <*  sepElem hsep
     <*  infoElem "<-"
     <*  sepElem hsep
-    <*> (annInfoElem $ astPretty from)
-  astPretty (Qualifier _ e) = resultPretty $ constrElem Qualifier <*> (annPoints $ astPretty e)
+    <*> annNoInfoElem (astPretty from)
+  -- ListComp1.hs - Qualifier has empty info points
+  astPretty (Qualifier _ e) = resultPretty $ constrElem Qualifier <*> annNoInfoElem (astPretty e)
   astPretty (LetStmt _ (BDecls _ declList)) =
     resultPretty $ constrElem LetStmt <*> ppLetStmt (constrElem BDecls) declList
   astPretty (LetStmt _ (IPBinds _ bindList)) =
@@ -1678,20 +1679,20 @@ ppLetStmt f ls = f <* infoElem "let" <* sepElem myVcat <*> ppBody letIndent (ann
 -- --------------------------------------------------------------------------
 
 instance PrettyAst QualStmt where
-  astPretty (QualStmt _ s) = resultPretty $ constrElem QualStmt <*> (annInfoElem $ astPretty s)
+  astPretty (QualStmt _ s) = resultPretty $ constrElem QualStmt <*> annNoInfoElem (astPretty s)
   astPretty (ThenTrans _ f) =
     -- myFsep
-    resultPretty.(nestMode onsideIndent) $ constrElem ThenTrans <* infoElem "then" <* sepElem myFsep <*> (annInfoElem $ astPretty f)
+    resultPretty.(nestMode onsideIndent) $ constrElem ThenTrans <* infoElem "then" <* sepElem myFsep <*> annNoInfoElem (astPretty f)
   astPretty (ThenBy _ f e) =
     -- myFsep
     resultPretty.(nestMode onsideIndent) $ constrElem ThenBy
       <* infoElem "then"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty f)
+      <*> annNoInfoElem (astPretty f)
       <* sepElem myFsep
       <* infoElem "by"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty e)
+      <*> annNoInfoElem (astPretty e)
   astPretty (GroupBy _ e) =
     -- myFsep
     resultPretty.(nestMode onsideIndent) $ constrElem GroupBy
@@ -1701,7 +1702,7 @@ instance PrettyAst QualStmt where
       <* sepElem myFsep
       <* infoElem "by"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty e)
+      <*> annNoInfoElem (astPretty e)
   astPretty (GroupUsing   _ f) =
     -- myFsep
     resultPretty.(nestMode onsideIndent) $ constrElem GroupUsing
@@ -1711,7 +1712,7 @@ instance PrettyAst QualStmt where
       <* sepElem myFsep
       <* infoElem "using"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty f)
+      <*> annNoInfoElem (astPretty f)
   astPretty (GroupByUsing _ e f) =
     -- myFsep
     resultPretty.(nestMode onsideIndent) $ constrElem GroupByUsing
@@ -1721,11 +1722,11 @@ instance PrettyAst QualStmt where
       <* sepElem myFsep
       <* infoElem "by"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty e)
+      <*> annNoInfoElem (astPretty e)
       <* sepElem myFsep
       <* infoElem "using"
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty f)
+      <*> annNoInfoElem (astPretty f)
 
 ------------------------- Record updates
 
