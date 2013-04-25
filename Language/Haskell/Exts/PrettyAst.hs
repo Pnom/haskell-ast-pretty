@@ -1810,9 +1810,15 @@ ppNameInfix name
 instance PrettyAst Name where
   astPretty n@(Ident _ _) = ppName n
   astPretty (Symbol _ s) =
-    resultPretty.parens $ constrElem Symbol
-      <*  sepElem hsep
-      <*> noInfoElem s
+    resultPretty $ constrElem Symbol
+      <*  infoElem "("
+      <*  sp s
+      <*> infoElem s
+      <*  sp s
+      <*  infoElem ")"
+    where
+      sp ('#':_) = sepElem hsep
+      sp _ = sepElem $ pure ()
 
 -- --------------------------------------------------------------------------
 
