@@ -1973,7 +1973,6 @@ space x = do
 
 type AstElem = WriterT [SrcSpan] DocM
 
-
 -- --------------------------------------------------------------------------
 -- AstElem utils
 
@@ -2130,10 +2129,6 @@ parensIf p d = if p then parens d else d
 
 flatBlock  :: [AstElem a] -> AstElem [a]
 flatBlock xs = braces $ sepElem hsep *> intersperse (infoElem ";") xs
-
--- Same, but put each thing on a separate line
-prettyBlock :: [AstElem a] -> AstElem [a]
-prettyBlock xs = braces $ sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) xs
 
 -- --------------------------------------------------------------------------
 -- general utils
