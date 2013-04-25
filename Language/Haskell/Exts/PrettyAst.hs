@@ -1429,7 +1429,11 @@ instance PrettyAst Pat where
   astPrettyPrec _ (PTuple _ ps) = resultPretty $ constrElem PTuple <*> parenList (annListElem annNoInfoElem ps)
   astPrettyPrec _ (PList _ ps) =
     resultPretty $ constrElem PList <*> braceList (annListElem annNoInfoElem ps)
-  astPrettyPrec _ (PParen _ pat) = resultPretty.parens $ constrElem PParen <*> (annInfoElem $ astPretty pat)
+  astPrettyPrec _ (PParen _ pat) =
+    resultPretty.parens $ constrElem PParen
+      <*  infoElem "("
+      <*> annNoInfoElem (astPretty pat)
+      <*  infoElem ")"
   astPrettyPrec _ (PRec _ c fields) = resultPretty.braces $ constrElem PRec
     <*> (annInfoElem $ astPretty c)
     <*> braceList (annListElem annNoInfoElem fields)
@@ -1478,7 +1482,7 @@ instance PrettyAst Pat where
     -- myFsep
     resultPretty.(nestMode onsideIndent).parensIf (p > 0) $
       constrElem PNPlusK
-        <*> (annInfoElem $ astPretty n)
+        <*> annNoInfoElem (astPretty n)
         <*  sepElem myFsep
         <*  infoElem "+"
         <*  sepElem myFsep
