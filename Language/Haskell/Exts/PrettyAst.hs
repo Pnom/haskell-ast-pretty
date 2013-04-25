@@ -1010,8 +1010,8 @@ instance PrettyAst GuardedRhs where
 instance PrettyAst Literal where
   astPretty (Int _ i s)  = resultPretty $ constrElem Int  <*> pure i <* (noInfoElem $ show i) <*> pure s
   astPretty (Char _ c s) = resultPretty $ constrElem Char <*> pure c <* (noInfoElem $ show c) <*> pure s
-  astPretty (String _ s s') = resultPretty $ constrElem String <*> pure s <* (infoElem $ show s) <*> pure s'
-  astPretty (Frac _ r s)    = resultPretty $ constrElem Frac <*> pure r <* (infoElem.show $ fromRational r) <*> pure s
+  astPretty (String _ s s') = resultPretty $ constrElem String <*> pure s <* (noInfoElem $ show s) <*> pure s'
+  astPretty (Frac _ r s)    = resultPretty $ constrElem Frac <*> pure r <* (noInfoElem.show $ fromRational r) <*> pure s
   -- GHC unboxed literals:
   astPretty (PrimChar _ c s) = resultPretty $ constrElem PrimChar
     <*> pure c <* (infoElem $ show c ++ "#") <*> pure s
@@ -1048,9 +1048,9 @@ instance PrettyAst Exp where
     -- myFsep
     resultPretty.(nestMode onsideIndent).parensIf (p > 3) $
       constrElem App
-        <*> annInfoElem (astPrettyPrec 3 a)
+        <*> annNoInfoElem (astPrettyPrec 3 a)
         <*  sepElem myFsep
-        <*> annInfoElem (astPrettyPrec 4 b)
+        <*> annNoInfoElem (astPrettyPrec 4 b)
   astPrettyPrec p (Lambda _ patList body) =
     -- myFsep
     resultPretty.(nestMode onsideIndent).parensIf (p > 1) $
@@ -1131,7 +1131,9 @@ instance PrettyAst Exp where
     <*> (annInfoElem $ astPretty e) <*> braceList (annListElem annNoInfoElem fieldList)
   -- Lists
   astPrettyPrec _ (List _ list) =  resultPretty $ constrElem List
-     <*> brackets (intersperse (infoElem "," <* sepElem myFsepSimple) $ annListElem annNoInfoElem list)
+     <*  infoElem "["
+     <*> intersperse (infoElem "," <* sepElem myFsepSimple) (annListElem annNoInfoElem list)
+     <*  infoElem "]"
   astPrettyPrec _ (EnumFrom _ e) =
     resultPretty $ constrElem EnumFrom
       <*  infoElem "["
@@ -1173,7 +1175,7 @@ instance PrettyAst Exp where
   astPrettyPrec _ (ListComp _ e qualList) =
     resultPretty $ constrElem ListComp
       <*  infoElem "["
-      <*> (annInfoElem $ astPretty e)
+      <*> annNoInfoElem (astPretty e)
       <*  sepElem myFsepSimple
       <*  infoElem "|"
       <*  sepElem myFsepSimple
