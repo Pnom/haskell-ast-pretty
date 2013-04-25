@@ -455,7 +455,7 @@ ppConstrList cs = infoElem "=" *> sepElem hsep
 ppFsepDhead :: DeclHead a -> AstElem (DeclHead SrcSpanInfo)
 ppFsepDhead dh = annNoInfoElem.resultPretty $ constrElem DHead
   <*> (annNoInfoElem $ astPretty name)
-  <*  (sepElem $ if null tvs then pure() else fsep)
+  <*  sepElemIf (not $ null tvs) fsep
   <*> intersperse (sepElem fsep) (annListElem annNoInfoElem tvs)
   where
     (name, tvs) = sDeclHead dh
@@ -789,7 +789,7 @@ instance PrettyAst ConDecl where
     resultPretty.(nestMode onsideIndent) $ constrElem ConDecl
     -- mySep
       <*> annNoInfoElem (ppName name)
-      <*  sepElem (if null typeList then pure () else fsep)
+      <*  sepElemIf (not $ null typeList) fsep
       <*> intersperse (sepElem fsep) (map (annNoInfoElem.astPrettyPrec prec_atype) typeList)
   astPretty (InfixConDecl _ l name r) =
     resultPretty.(nestMode onsideIndent) $ constrElem InfixConDecl
@@ -1976,6 +1976,9 @@ implicitElem s = annInfoElem $ format "" >> return ()
 
 sepElem :: DocM() -> AstElem ()
 sepElem s = annNoInfoElem s
+
+sepElemIf :: Bool -> DocM() -> AstElem()
+sepElemIf p s = sepElem $ if p then s else pure ()
 
 annNoInfoElem :: DocM a -> AstElem a
 annNoInfoElem a = lift a
