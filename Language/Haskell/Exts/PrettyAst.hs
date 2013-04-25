@@ -144,26 +144,23 @@ instance PrettyAst ImportSpecList where
   astPretty (ImportSpecList _ b ispecs) =
     resultPretty $ constrElem ImportSpecList
       <*> (if b then pure b <* infoElem "hiding" else pure b)
-      <*  sepElem hsep
-      <*> parenList (annListElem annNoInfoElem ispecs)
+      <*  sepElemIf (not $ null ispecs) hsep
+      <*  infoElem "("
+      <*> intersperse parenListSep (annListElem annNoInfoElem ispecs)
+      <*  infoElem ")"
 
 -- --------------------------------------------------------------------------
 
 instance PrettyAst ImportSpec where
-  astPretty (IVar _ name)                = resultPretty $ constrElem IVar <*> (annNoInfoElem $ astPretty name)
-  astPretty (IAbs _ name)                = resultPretty $ constrElem IAbs <*> (annNoInfoElem $ astPretty name)
+  astPretty (IVar _ name)                = resultPretty $ constrElem IVar <*> annNoInfoElem (astPretty name)
+  astPretty (IAbs _ name)                = resultPretty $ constrElem IAbs <*> annNoInfoElem (astPretty name)
   astPretty (IThingAll _ name)           =
     resultPretty $ constrElem IThingAll <*> (annNoInfoElem $ astPretty name) <* infoElem "(..)"
   astPretty (IThingWith _ name nameList) =
     resultPretty $ constrElem IThingWith <*> (annNoInfoElem $ astPretty name) <*> parenList (annListElem annNoInfoElem nameList)
 
 identDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
-identDeriving d = do
-  xs <- ppBody letIndent [ppDeriving d]
-  return $ head xs
-
-identDeriving' :: Deriving a -> AstElem (Deriving SrcSpanInfo)
-identDeriving' d = ppBody letIndent [ppDeriving d] >>= return.head
+identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
 
 -------------------------  Declarations ------------------------------
 
