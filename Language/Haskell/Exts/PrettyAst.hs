@@ -1889,15 +1889,29 @@ instance PrettyAst Context where
   astPretty (CxSingle _ asst) =
     resultPretty.(nestMode onsideIndent) $ constrElem CxSingle
       <* infoElem "("
-      <*> (annNoInfoElem $ astPretty asst)
-      <* infoElem ")"
-      <* sepElem fsep <* infoElem "=>"
+      <*> annNoInfoElem (astPretty asst)
+      <*  infoElem ")"
+      <*  sepElem fsep <* infoElem "=>"
   astPretty (CxTuple _ assts) =
     resultPretty.(nestMode onsideIndent) $ constrElem CxTuple
       <*> parenList (annListElem annNoInfoElem assts) -- myFsep and parenList -> myFsep and myFsepSimple ???
       <* sepElem myFsep
       <* infoElem "=>"
-  astPretty (CxParen _ asst) = resultPretty $ constrElem CxParen <*> enclose (infoElem "(") (infoElem ")") ((annNoInfoElem $ astPretty asst))
+  astPretty (CxParen _ ctxt) = resultPretty $ constrElem CxParen 
+    <*  infoElem "("
+    <*> annNoInfoElem (parenContext ctxt)
+    <*  infoElem ")"
+    <* sepElem myFsep
+    <* infoElem "=>"    
+    where
+      parenContext (CxEmpty _) = 
+        resultPretty.(nestMode onsideIndent) $ constrElem CxEmpty
+      parenContext (CxSingle _ asst) = 
+        resultPretty.(nestMode onsideIndent) $ constrElem CxSingle
+          <*> annNoInfoElem (astPretty asst)
+      parenContext (CxTuple _ assts) = 
+        resultPretty.(nestMode onsideIndent) $ constrElem CxTuple
+          <*> intersperse parenListSep (annListElem annNoInfoElem assts)
 
 -- --------------------------------------------------------------------------
 -- hacked for multi-parameter type classes
