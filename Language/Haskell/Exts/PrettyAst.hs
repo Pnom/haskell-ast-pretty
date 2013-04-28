@@ -1111,22 +1111,28 @@ instance PrettyAst Exp where
       <*  sepElem myVcat
       <*> ppBody doIndent (annListElem annNoInfoElem stmtList)
   -- Constructors & Vars
-  astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (annNoInfoElem $ astPretty name)
+  astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (pointsInfoElem $ astPretty name)
   astPrettyPrec _ (IPVar _ ipname) = resultPretty $ constrElem IPVar <*> (annInfoElem $ astPretty ipname)
-  astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (annInfoElem $ astPretty name)
+  astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (pointsInfoElem $ astPretty name)
   astPrettyPrec _ (Tuple _ expList) = resultPretty $ constrElem Tuple
     <*> parenList (annListElem annNoInfoElem expList)
-  astPrettyPrec _ (TupleSection _ mExpList) = resultPretty $ constrElem TupleSection
-    <*> parenList (map (traverse $ annNoInfoElem.astPretty) mExpList)
+  astPrettyPrec _ (TupleSection _ mExpList) = 
+    resultPretty $ constrElem TupleSection
+      <*  infoElem "("
+      <*> intersperse (infoElem "," <* sepElem myFsepSimple) (map (traverse $ annNoInfoElem.astPretty) mExpList)
+      <*  infoElem ")"
   -- weird stuff
-  astPrettyPrec _ (Paren _ e) = resultPretty.parens $ constrElem Paren <*> (annInfoElem $ astPretty e)
+  astPrettyPrec _ (Paren _ e) = resultPretty $ constrElem Paren
+    <*  infoElem "("
+    <*> annNoInfoElem (astPretty e)
+    <*  infoElem ")"
   astPrettyPrec _ (LeftSection _ e op) =
-    resultPretty.parens $ constrElem LeftSection
+    resultPretty $ constrElem LeftSection
       <*> (annInfoElem $ astPretty e)
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty op)
   astPrettyPrec _ (RightSection _ op e) =
-    resultPretty.parens $ constrElem RightSection
+    resultPretty $ constrElem RightSection
       <*> (annInfoElem $ astPretty op)
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty e)
@@ -1253,9 +1259,11 @@ instance PrettyAst Exp where
   astPrettyPrec p (CorePragma _ s e) =
     resultPretty.(nestMode onsideIndent) $ constrElem CorePragma
       -- myFsep
-      <*  infoElem "{-# CORE"
+      <*  noInfoElem "{-# CORE"
       <*  sepElem myFsep
+      <*  noInfoElem "\""
       <*> infoElem s
+      <*  noInfoElem "\""
       <*  sepElem myFsep
       <*  infoElem "#-}"
       <*  sepElem myFsep
@@ -1263,19 +1271,23 @@ instance PrettyAst Exp where
   astPrettyPrec _ (SCCPragma  _ s e) =
     resultPretty.(nestMode onsideIndent) $ constrElem SCCPragma
       -- myFsep
-      <*  infoElem "{-# SCC"
+      <*  noInfoElem "{-# SCC"
       <*  sepElem myFsep
+      <*  noInfoElem "\""
       <*> infoElem s
+      <*  noInfoElem "\""
       <*  sepElem myFsep
       <*  infoElem "#-}"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty e)
+      <*> (annNoInfoElem $ astPretty e)
   astPrettyPrec _ (GenPragma  _ s (a,b) (c,d) e) =
     resultPretty.(nestMode onsideIndent) $ constrElem GenPragma
       -- myFsep
-      <*  infoElem "{-# GENERATED"
+      <*  noInfoElem "{-# GENERATED"
       <*  sepElem myFsep
+      <*  noInfoElem "\""
       <*> infoElem s
+      <*  noInfoElem "\""
       <*  sepElem myFsep
       <*> tpl(a, b)
       <*  sepElem myFsep
