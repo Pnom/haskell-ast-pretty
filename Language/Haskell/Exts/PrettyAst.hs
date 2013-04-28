@@ -1116,7 +1116,7 @@ instance PrettyAst Exp where
   astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (pointsInfoElem $ astPretty name)
   astPrettyPrec _ (Tuple _ expList) = resultPretty $ constrElem Tuple
     <*> parenList (annListElem annNoInfoElem expList)
-  astPrettyPrec _ (TupleSection _ mExpList) = 
+  astPrettyPrec _ (TupleSection _ mExpList) =
     resultPretty $ constrElem TupleSection
       <*  infoElem "("
       <*> intersperse (infoElem "," <* sepElem myFsepSimple) (map (traverse $ annNoInfoElem.astPretty) mExpList)
@@ -1431,23 +1431,26 @@ instance PrettyAst Pat where
     -- myFsep
     resultPretty.(nestMode onsideIndent).parensIf (p > 0) $
       constrElem PInfixApp
-        <*> annInfoElem (astPrettyPrec 1 a)
+        <*> annNoInfoElem (astPrettyPrec 1 a)
         <*  sepElem myFsep
         <*> ppQNameInfix op
         <*  sepElem myFsep
-        <*> annInfoElem (astPrettyPrec 1 b)
+        <*> annNoInfoElem (astPrettyPrec 1 b)
   astPrettyPrec p (PApp _ n ps) =
     -- myFsep
     resultPretty.(nestMode onsideIndent).parensIf (p > 1 && not (null ps)) $
       constrElem PApp
-        <*> (annInfoElem $ astPretty n)
+        <*> annNoInfoElem (astPretty n)
         <*  sepElem myFsep
         <*> intersperse (sepElem myFsep) (map (annNoInfoElem.astPrettyPrec 2) ps)
   astPrettyPrec _ (PTuple _ ps) = resultPretty $ constrElem PTuple <*> parenList (annListElem annNoInfoElem ps)
   astPrettyPrec _ (PList _ ps) =
-    resultPretty $ constrElem PList <*> braceList (annListElem annNoInfoElem ps)
+    resultPretty $ constrElem PList
+      <*  infoElem "["
+      <*> intersperse parenListSep (annListElem annNoInfoElem ps)
+      <*  infoElem "]"
   astPrettyPrec _ (PParen _ pat) =
-    resultPretty.parens $ constrElem PParen
+    resultPretty $ constrElem PParen
       <*  infoElem "("
       <*> annNoInfoElem (astPretty pat)
       <*  infoElem ")"
@@ -1457,24 +1460,24 @@ instance PrettyAst Pat where
   -- special case that would otherwise be buggy
   astPrettyPrec _ (PAsPat _ name (PIrrPat _ pat)) =
     -- myFsep
-    resultPretty.(nestMode onsideIndent).braces $
+    resultPretty.(nestMode onsideIndent) $
       constrElem PAsPat
-        <*> (annInfoElem $ astPretty name)
+        <*> annNoInfoElem (astPretty name)
         <*  infoElem "@"
         <*  sepElem myFsep
         <*  infoElem "~"
-        <*> pat'
+        <*> annNoInfoElem pat'
     where
-      pat' = constrElem PIrrPat <*> annInfoElem (astPrettyPrec 2 pat)
+      pat' = resultPretty $ constrElem PIrrPat <*> annNoInfoElem (astPrettyPrec 2 pat)
   astPrettyPrec _ (PAsPat _ name pat) =
-    resultPretty.braces $ constrElem PAsPat
+    resultPretty $ constrElem PAsPat
     -- hcat
-      <*> (annInfoElem $ astPretty name)
+      <*> annNoInfoElem (astPretty name)
       <*  infoElem "@"
-      <*> annInfoElem (astPrettyPrec 2 pat)
-  astPrettyPrec _ (PWildCard _) = resultPretty.braces $ constrElem PWildCard <* infoElem "_"
+      <*> annNoInfoElem (astPrettyPrec 2 pat)
+  astPrettyPrec _ (PWildCard _) = resultPretty$ constrElem PWildCard <* noInfoElem "_"
   astPrettyPrec _ (PIrrPat _ pat) =
-    resultPretty.braces $ constrElem PIrrPat
+    resultPretty $ constrElem PIrrPat
       <*  infoElem "~"
       <*> annInfoElem (astPrettyPrec 2 pat)
   astPrettyPrec p (PatTypeSig _ pat ty) =
@@ -1909,19 +1912,19 @@ instance PrettyAst Context where
       <*> parenList (annListElem annNoInfoElem assts) -- myFsep and parenList -> myFsep and myFsepSimple ???
       <* sepElem myFsep
       <* infoElem "=>"
-  astPretty (CxParen _ ctxt) = resultPretty $ constrElem CxParen 
+  astPretty (CxParen _ ctxt) = resultPretty $ constrElem CxParen
     <*  infoElem "("
     <*> annNoInfoElem (parenContext ctxt)
     <*  infoElem ")"
     <* sepElem myFsep
-    <* infoElem "=>"    
+    <* infoElem "=>"
     where
-      parenContext (CxEmpty _) = 
+      parenContext (CxEmpty _) =
         resultPretty.(nestMode onsideIndent) $ constrElem CxEmpty
-      parenContext (CxSingle _ asst) = 
+      parenContext (CxSingle _ asst) =
         resultPretty.(nestMode onsideIndent) $ constrElem CxSingle
           <*> annNoInfoElem (astPretty asst)
-      parenContext (CxTuple _ assts) = 
+      parenContext (CxTuple _ assts) =
         resultPretty.(nestMode onsideIndent) $ constrElem CxTuple
           <*> intersperse parenListSep (annListElem annNoInfoElem assts)
 
@@ -1939,7 +1942,7 @@ instance PrettyAst Asst where
     resultPretty.(nestMode onsideIndent) $ constrElem InfixA
       <*> (annNoInfoElem $ astPretty a)
       <*   sepElem myFsep
-      <*> ppQNameInfix op
+      <*> annNoInfoElem (ppQNameInfix op)
       <*   sepElem myFsep
       <*> (annNoInfoElem $ astPretty b)
   astPretty (IParam _ i t) =
@@ -2242,16 +2245,16 @@ testDoc l f = do
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
 
   ParseOk parsingRes <- parseFile f
-  
-  let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)  
-  
+
+  let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)
+
   putStrLn "raw parsing result"
   putStrLn $ show parsingRes
   putStrLn ""
   putStrLn "raw  result of ast prettifying"
   putStrLn $ show prettyRes
   putStrLn ""
-  
+
   putStrLn "short parsing result"
   putStrLn . show $ fmap simpleSpanInfo parsingRes
   putStrLn ""
