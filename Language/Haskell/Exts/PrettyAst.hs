@@ -2215,20 +2215,28 @@ testDoc l f = do
   putStrLn $ "File: " ++ f ++ "; Layout: " ++
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
 
-  ParseOk parsingRes <- parseFile f
+  ParseOk parsingRes <- parseFile $ testPath ++ f
+  
+  let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)  
+  
   putStrLn "raw parsing result"
   putStrLn $ show parsingRes
   putStrLn ""
+  putStrLn "raw  result of ast prettifying"
+  putStrLn $ show prettyRes
+  putStrLn ""
+  
   putStrLn "short parsing result"
   putStrLn . show $ fmap simpleSpanInfo parsingRes
   putStrLn ""
 
-  let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)
   putStrLn "short result of ast prettifying"
   putStrLn . show $ fmap simpleSpanInfo prettyRes
   putStrLn ""
+
   putStrLn "ast prettifying trace:"
   putStrLn . show $ prettifyingTrace prettyState
+
   putStrLn "----------------------------------------"
   putStrLn "prettyPrintWithMode parsingRes:"
   putStrLn $ prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
