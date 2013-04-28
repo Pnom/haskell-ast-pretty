@@ -1771,8 +1771,8 @@ instance PrettyAst QOp where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst SpecialCon where
-  astPretty (UnitCon _) = resultPretty $ constrElem UnitCon <* infoElem "()"
-  astPretty (ListCon _) = resultPretty $ constrElem ListCon <* infoElem "[]"
+  astPretty (UnitCon _) = resultPretty $ constrElem UnitCon <* infoElem "(" <* infoElem ")"
+  astPretty (ListCon _) = resultPretty $ constrElem ListCon <* infoElem "[" <* infoElem "]"
   astPretty (FunCon _) = resultPretty $ constrElem FunCon  <* infoElem "->"
   astPretty (TupleCon _ b n) =
     let
