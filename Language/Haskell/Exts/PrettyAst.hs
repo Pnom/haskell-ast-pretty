@@ -2241,7 +2241,7 @@ testDoc l f = do
   putStrLn $ "File: " ++ f ++ "; Layout: " ++
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
 
-  ParseOk parsingRes <- parseFile $ testPath ++ f
+  ParseOk parsingRes <- parseFile f
   
   let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)  
   
