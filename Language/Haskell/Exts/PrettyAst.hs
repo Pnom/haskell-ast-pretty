@@ -565,7 +565,7 @@ instance PrettyAst Match where
             op  = infoElem $ if null pbs' then "" else "("
             cp  = infoElem $ if null pbs' then "" else ")"
             fn  = \l' n' r' -> (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
-          in fn (op *> (annNoInfoElem $ astPretty l)) (annNoInfoElem $ ppName n) (cp *> (annNoInfoElem $ astPretty r))
+          in fn (op *> (annNoInfoElem $ astPretty l)) (annNoInfoElem $ astPretty n) (cp *> (annNoInfoElem $ astPretty r))
         _ -> (annNoInfoElem $ astPretty n, map (annNoInfoElem.astPrettyPrec 2) pbs)
 
 ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
@@ -789,7 +789,7 @@ instance PrettyAst ConDecl where
   astPretty (ConDecl _ name typeList) =
     resultPretty.(nestMode onsideIndent) $ constrElem ConDecl
     -- mySep
-      <*> annNoInfoElem (ppName name)
+      <*> annNoInfoElem (astPretty name)
       <*  sepElemIf (not $ null typeList) fsep
       <*> intersperse (sepElem fsep) (map (annNoInfoElem.astPrettyPrec prec_atype) typeList)
   astPretty (InfixConDecl _ l name r) =
@@ -797,7 +797,7 @@ instance PrettyAst ConDecl where
     -- myFsep
       <*> annInfoElem (astPrettyPrec prec_btype l)
       <*  sepElem myFsep
-      <*> ppNameInfix name
+      <*> annNoInfoElem (ppNameInfix name)
       <*  sepElem myFsep
       <*> annInfoElem (astPrettyPrec prec_btype r)
 
@@ -917,7 +917,7 @@ instance PrettyAst Type where
 
     <*> (annNoInfoElem $ astPretty a)
     <* sepElem myFsep
-    <*> ppQNameInfix op
+    <*> annNoInfoElem (ppQNameInfix op)
     <* sepElem myFsep
     <*> (annNoInfoElem $ astPretty b)
   astPrettyPrec  _ (TyKind _ t k) = resultPretty $ (nestMode onsideIndent) t'
@@ -1433,7 +1433,7 @@ instance PrettyAst Pat where
       constrElem PInfixApp
         <*> annNoInfoElem (astPrettyPrec 1 a)
         <*  sepElem myFsep
-        <*> ppQNameInfix op
+        <*> annNoInfoElem (ppQNameInfix op)
         <*  sepElem myFsep
         <*> annNoInfoElem (astPrettyPrec 1 b)
   astPrettyPrec p (PApp _ n ps) =
@@ -1765,8 +1765,8 @@ instance PrettyAst FieldUpdate where
 ------------------------- Names -------------------------
 
 instance PrettyAst QOp where
-  astPretty (QVarOp _ n) = resultPretty $ constrElem QVarOp <*> ppQNameInfix n
-  astPretty (QConOp _ n) = resultPretty $ constrElem QConOp <*> ppQNameInfix n
+  astPretty (QVarOp _ n) = resultPretty $ constrElem QVarOp <*> pointsInfoElem (ppQNameInfix n)
+  astPretty (QConOp _ n) = resultPretty $ constrElem QConOp <*> pointsInfoElem (ppQNameInfix n)
 
 -- --------------------------------------------------------------------------
 
@@ -1788,57 +1788,43 @@ instance PrettyAst SpecialCon where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst QName where
-  astPretty qn
-    | needParens = resultPretty $ enclose (infoElem "(" <* sepElem hsep) (infoElem ")") (annInfoElem $ rawQName qn)
-    | otherwise =  rawQName qn
-    where
-      needParens = case qn of
-        UnQual _    (Symbol _ _) -> True
-        Qual   _  _ (Symbol _ _) -> True
-        Special _ (Cons _)    -> True
-        Special _ (FunCon _)  -> True
-        _ -> False
+  astPretty (Qual _ mn n)  = resultPretty $ constrElem Qual
+    <*> annNoInfoElem (astPretty mn)
+    <*  infoElem "."
+    <*> pointsInfoElem (astPretty n)
+  astPretty (UnQual _ n)   = resultPretty $ constrElem UnQual <*> pointsInfoElem (astPretty n)
+  astPretty (Special _ sc) = resultPretty $ constrElem Special <*> (pointsInfoElem $ astPretty sc)
 
 -- --------------------------------------------------------------------------
 -- QName utils
-rawQName :: QName a -> DocM (QName SrcSpanInfo)
-rawQName (Qual _ mn n)  =
-  resultPretty $ constrElem Qual
-    <*> (annNoInfoElem $ astPretty mn)
-    <*  infoElem "."
-    <*> annInfoElem (ppName n)
-rawQName (UnQual _ n)   = resultPretty $ constrElem UnQual <*> annNoInfoElem (ppName n)
-rawQName (Special _ sc) = resultPretty $ constrElem Special <*> (annNoInfoElem $ astPretty sc)
 
-ppQNameInfix :: QName a -> AstElem (QName SrcSpanInfo)
-ppQNameInfix name
-  | isSymbolName (getName name) = annNoInfoElem $ rawQName name
-  | otherwise = infoElem "`" *> annNoInfoElem (rawQName name) <* infoElem "`"
+ppQNameInfix :: QName a -> DocM (QName SrcSpanInfo)
+ppQNameInfix (Qual _ mn n)  =
+  resultPretty $ constrElem Qual
+    <*> annNoInfoElem (astPretty mn)
+    <*  infoElem "."
+    <*> pointsInfoElem (astPretty n)
+ppQNameInfix (UnQual _ n)   = resultPretty $ constrElem UnQual <*> pointsInfoElem (ppNameInfix n)
+ppQNameInfix (Special _ sc) = resultPretty $ constrElem Special <*> (pointsInfoElem $ astPretty sc)
 
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Op where
-  astPretty (VarOp _ n) = resultPretty $ constrElem VarOp <*> ppNameInfix n
-  astPretty (ConOp _ n) = resultPretty $ constrElem ConOp <*> ppNameInfix n
-
+  astPretty (VarOp _ n) = resultPretty $ constrElem VarOp <*> pointsInfoElem (ppNameInfix n)
+  astPretty (ConOp _ n) = resultPretty $ constrElem ConOp <*> pointsInfoElem (ppNameInfix n)
+  
 -- --------------------------------------------------------------------------
-ppNameInfix :: Name a -> AstElem (Name SrcSpanInfo)
-ppNameInfix name
-  | isSymbolName name = annInfoElem $ ppName name
-  | otherwise = infoElem "`" *> annInfoElem (ppName name) <* infoElem "`"
+
+ppNameInfix :: Name a -> DocM (Name SrcSpanInfo)
+ppNameInfix (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
+ppNameInfix (Ident  _ s) = resultPretty $ constrElem Ident  
+  <*  infoElem "'"
+  <*> infoElem s
+  <*  infoElem "'"
 
 instance PrettyAst Name where
-  astPretty n@(Ident _ _) = ppName n
-  astPretty (Symbol _ s) =
-    resultPretty $ constrElem Symbol
-      <*  infoElem "("
-      <*  sp s
-      <*> infoElem s
-      <*  sp s
-      <*  infoElem ")"
-    where
-      sp ('#':_) = sepElem hsep
-      sp _ = sepElem $ pure ()
+  astPretty (Ident  _ s) = resultPretty $ constrElem Ident  <*> noInfoElem s
+  astPretty (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
@@ -1861,10 +1847,6 @@ specialName (TupleCon _ b n) = "(" ++ hash ++ replicate (n-1) ',' ++ hash ++ ")"
     where hash = if b == Unboxed then "#" else ""
 specialName (Cons _) = ":"
 specialName (UnboxedSingleCon _) = "(# #)"
-
-ppName :: Name a -> DocM (Name SrcSpanInfo)
-ppName (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
-ppName (Ident  _ s) = resultPretty $ constrElem Ident  <*> noInfoElem s
 
 -- --------------------------------------------------------------------------
 
