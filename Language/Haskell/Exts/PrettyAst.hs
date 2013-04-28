@@ -2171,10 +2171,10 @@ topLevel dl = do
   PrettyMode mode _ <- ask
   let dl' = annListElem annNoInfoElem dl
   case layout mode of
-    PPOffsideRule -> sepElem vcat *> intersperse (sepElem vcat) dl'
-    PPSemiColon -> sepElem vcat *> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
-    PPInLine -> sepElem vcat *> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
-    PPNoLayout -> sepElem hsep *> flatBlock dl'
+    PPOffsideRule -> intersperse (sepElem vcat) dl'
+    PPSemiColon   -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
+    PPInLine      -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
+    PPNoLayout    -> flatBlock dl'
 
 -- --------------------------------------------------------------------------
 -- simplify utils
