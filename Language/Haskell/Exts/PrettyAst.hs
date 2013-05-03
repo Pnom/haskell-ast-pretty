@@ -601,7 +601,7 @@ instance PrettyAst ClassDecl where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst InstDecl where
-  astPretty (InsDecl _ decl) = resultPretty $ constrElem InsDecl 
+  astPretty (InsDecl _ decl) = resultPretty $ constrElem InsDecl
     <*> pointsInfoElem (astPretty decl)
   astPretty (InsType _ ntype htype) =
     resultPretty.(nestMode onsideIndent) $ constrElem InsType
@@ -813,7 +813,9 @@ instance PrettyAst BangType where
     resultPretty $ constrElem BangedTy
       <*  infoElem "!"
       <*> (annInfoElem $ ppAType ty)
-  astPrettyPrec p (UnBangedTy _ ty) = resultPretty $ constrElem UnBangedTy <*> (annInfoElem $ ppType p ty)
+  astPrettyPrec p (UnBangedTy _ ty) =
+    resultPretty $ constrElem UnBangedTy
+      <*> pointsInfoElem (ppType p ty)
   astPrettyPrec p (UnpackedTy _ ty) =
     resultPretty $ constrElem UnpackedTy
       <*  infoElem "{-# UNPACK #-}"
