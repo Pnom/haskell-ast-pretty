@@ -1831,7 +1831,10 @@ ppNameInfix (Ident  _ s) = resultPretty $ constrElem Ident
 
 instance PrettyAst Name where
   astPretty (Ident  _ s) = resultPretty $ constrElem Ident  <*> noInfoElem s
-  astPretty (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
+  astPretty (Symbol _ s) = resultPretty $ constrElem Symbol
+    <*  infoElem "("
+    <*> infoElem s
+    <*  infoElem ")"
 
 -- --------------------------------------------------------------------------
 
