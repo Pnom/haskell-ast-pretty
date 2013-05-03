@@ -272,18 +272,16 @@ instance PrettyAst Decl where
       <*  (if null $ fromMaybe [] mClassDecl then infoElem "" else sepElem fsep *> infoElem "where" <* sepElem myVcat)
       <*> traverse cDecl mClassDecl
     where
-      cDecl cd = ppBody classIndent (annListElem annNoInfoElem cd)
+     cDecl cd = ppBody classIndent (annListElem annNoInfoElem cd)
   astPretty (InstDecl _ mContext instHead mInstDecl) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem InstDecl
       <*  infoElem "instance"
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppInstHeadInDecl instHead
-      <*  sepElem fsep
-      <*  infoElem "where"
       <*> traverse instDecl mInstDecl
     where
-      instDecl is = ppBody classIndent (annListElem annNoInfoElem is)
+      instDecl is = sepElem fsep *> infoElem "where" *> sepElem vcat *> ppBody classIndent (annListElem annNoInfoElem is)
   astPretty (DerivDecl _ mContext instHead) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem DerivDecl
       -- mySep
@@ -297,8 +295,9 @@ instance PrettyAst Decl where
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem InfixDecl
       -- mySep
       <*> (annNoInfoElem $ astPretty assoc)
-      <*> traverse (\x -> sepElem fsep *> (infoElem $ show x) *> pure x) mInt
-      <*> intersperse (sepElem fsep) (annListElem annInfoElem op)
+      <*  sepElem fsep
+      <*> traverse (\x -> infoElem (show x) *> pure x <* sepElem fsep) mInt
+      <*> intersperse (sepElem fsep) (annListElem annNoInfoElem op)
   astPretty (DefaultDecl _ t) =
     blankline.resultPretty $ constrElem DefaultDecl
       <*  infoElem "default"
@@ -1812,12 +1811,12 @@ ppQNameInfix (Special _ sc) = resultPretty $ constrElem Special <*> (pointsInfoE
 instance PrettyAst Op where
   astPretty (VarOp _ n) = resultPretty $ constrElem VarOp <*> pointsInfoElem (ppNameInfix n)
   astPretty (ConOp _ n) = resultPretty $ constrElem ConOp <*> pointsInfoElem (ppNameInfix n)
-  
+
 -- --------------------------------------------------------------------------
 
 ppNameInfix :: Name a -> DocM (Name SrcSpanInfo)
 ppNameInfix (Symbol _ s) = resultPretty $ constrElem Symbol <*> noInfoElem s
-ppNameInfix (Ident  _ s) = resultPretty $ constrElem Ident  
+ppNameInfix (Ident  _ s) = resultPretty $ constrElem Ident
   <*  infoElem "'"
   <*> infoElem s
   <*  infoElem "'"
