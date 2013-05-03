@@ -1784,12 +1784,23 @@ instance PrettyAst SpecialCon where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst QName where
+  astPretty (Qual _ (ModuleName _ mn) (Symbol _ s))  = do
+        op  <- format "("
+        ss  <- getPos
+        mn' <- format mn
+        p   <- format "."
+        s'  <- format s
+        es  <- getPos
+        cp  <- format ")"
+        let si = SrcSpanInfo (mergeSrcSpan op cp) [op, (mkSrcSpan ss es), cp]
+        return $ Qual si (ModuleName si mn) (Symbol si s)
   astPretty (Qual _ mn n)  = resultPretty $ constrElem Qual
     <*> annNoInfoElem (astPretty mn)
     <*  infoElem "."
     <*> pointsInfoElem (astPretty n)
-  astPretty (UnQual _ n)   = resultPretty $ constrElem UnQual <*> pointsInfoElem (astPretty n)
-  astPretty (Special _ sc) = resultPretty $ constrElem Special <*> (pointsInfoElem $ astPretty sc)
+
+  astPretty (UnQual _ n)   = resultPretty $ constrElem UnQual  <*> pointsInfoElem (astPretty n)
+  astPretty (Special _ sc) = resultPretty $ constrElem Special <*> pointsInfoElem (astPretty sc)
 
 -- --------------------------------------------------------------------------
 -- QName utils
