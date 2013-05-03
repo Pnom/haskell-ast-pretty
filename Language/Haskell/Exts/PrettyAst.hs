@@ -940,7 +940,7 @@ instance PrettyAst TyVarBind where
       <*  sepElem myFsep
       <*> (annInfoElem $ astPretty kind)
       <*  sepElem myFsep
-  astPretty (UnkindedVar _ var) = resultPretty $ constrElem UnkindedVar <*> (annInfoElem $ astPretty var)
+  astPretty (UnkindedVar _ var) = resultPretty $ constrElem UnkindedVar <*> annNoInfoElem (astPretty var)
 
 ppForall :: [AstElem a] -> AstElem [a]
 ppForall [] = pure []
