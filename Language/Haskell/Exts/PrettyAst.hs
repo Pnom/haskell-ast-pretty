@@ -539,33 +539,27 @@ instance PrettyAst Assoc where
 instance PrettyAst Match where
   astPretty m =
     case m of
-      (InfixMatch _ pa n pbs rhs mWhere) -> let (n', l':pbs') = lhs n (pa:pbs) in
+      (InfixMatch _ pa n pbs rhs mWhere) ->
         resultPretty.(nestMode onsideIndent) $ constrElem InfixMatch
-          <*> l'
+          <*> annNoInfoElem (astPretty pa)
           <*  sepElem myFsep
-          <*> n'
+          <*> annNoInfoElem (ppNameInfix n)
           <*  sepElem myFsep
-          <*> intersperse (sepElem myFsep) pbs'
-          <*  sepElemIf (not $ null pbs') myFsep
+          <*> ppPbs pbs
           <*> annNoInfoElem (astPretty rhs)
           <*> ppWhere mWhere
-      (Match _ n pbs rhs mWhere) -> let (n', pbs') = lhs n pbs in
+      (Match _ n pbs rhs mWhere) ->
         resultPretty $ constrElem Match
-          <*> n'
+          <*> ppName n
           <*  sepElem myFsep
-          <*> intersperse (sepElem myFsep) pbs'
-          <*  sepElemIf (not $ null pbs') myFsep
+          <*> ppPbs pbs
           <*> annNoInfoElem (astPretty rhs)
           <*> ppWhere mWhere
     where
-      lhs n pbs = case pbs of
-        l:r:pbs' | isSymbolName n ->
-          let
-            op  = infoElem $ if null pbs' then "" else "("
-            cp  = infoElem $ if null pbs' then "" else ")"
-            fn  = \l' n' r' -> (n', l' : r' : map (annNoInfoElem.astPrettyPrec 2) pbs')
-          in fn (op *> (annNoInfoElem $ astPretty l)) (annNoInfoElem $ astPretty n) (cp *> (annNoInfoElem $ astPretty r))
-        _ -> (annNoInfoElem $ astPretty n, map (annNoInfoElem.astPrettyPrec 2) pbs)
+      ppName n@(Symbol _ _) = pointsInfoElem (ppNameInfix n)
+      ppName n = annNoInfoElem (astPretty n)
+      ppPbs ps = intersperse (sepElem myFsep) (map (annNoInfoElem.astPrettyPrec 2) ps)
+        <*  sepElemIf (not $ null ps) myFsep
 
 ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
 ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> sepElem hsep *> impl x) mWhere
