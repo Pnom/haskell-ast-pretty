@@ -2191,7 +2191,7 @@ ppBody f dl =  do
   (PrettyMode mode _) <- ask
   let i = f mode
   case layout mode of
-    PPOffsideRule -> implicitElem "{" *> nest i (intersperse (implicitElem ";" <* sepElem vcat) dl <* implicitElem "}")
+    PPOffsideRule -> implicitElem "{ - just begin of body" *> nest i (intersperse (noInfoElem ";" <* sepElem vcat) dl <* noInfoElem "}")
     PPSemiColon   -> infoElem "{" *> nest i (sepElem vcat *> intersperse (infoElem ";" <* sepElem vcat) dl <* sepElem hsep <* infoElem "}")
     _ -> flatBlock dl
 
