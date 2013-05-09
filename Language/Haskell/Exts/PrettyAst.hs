@@ -1728,11 +1728,11 @@ instance PrettyAst FieldUpdate where
   astPretty (FieldUpdate _ name e) =
     -- myFsep
     resultPretty.(nestMode onsideIndent) $ constrElem FieldUpdate
-      <*> (annInfoElem $ astPretty name)
+      <*> annNoInfoElem (astPretty name)
       <* sepElem myFsep
       <* infoElem "="
       <* sepElem myFsep
-      <*> (annInfoElem $ astPretty e)
+      <*> annNoInfoElem (astPretty e)
   astPretty (FieldPun _ name) = resultPretty $ constrElem FieldPun <*> (annInfoElem $ astPretty name)
   astPretty (FieldWildcard _) = resultPretty $ constrElem FieldWildcard <* infoElem ".."
 
