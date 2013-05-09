@@ -569,23 +569,23 @@ ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> inf
 
 instance PrettyAst ClassDecl where
   astPretty (ClsDecl _ d) = resultPretty $ constrElem ClsDecl <*> (annInfoElem $ astPretty d)
-  astPretty (ClsDataFam _ context dh optkind) =
+  astPretty (ClsDataFam _ context dh mkind) =
     resultPretty.(nestMode onsideIndent) $ constrElem ClsDataFam
       -- mySep
       <*  infoElem "data"
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) context
       <*> ppFsepDhead dh
-      <*  sepElem fsep
-      <*> ppOptKind optkind
-  astPretty (ClsTyFam _ dh optkind)  =
+      <*  sepElemIf (isJust mkind) fsep
+      <*> ppOptKind mkind
+  astPretty (ClsTyFam _ dh mkind)  =
     resultPretty.(nestMode onsideIndent) $ constrElem ClsTyFam
       -- mySep
       <*  infoElem "type"
       <*  sepElem fsep
       <*> ppFsepDhead dh
-      <*  sepElem fsep
-      <*> ppOptKind optkind
+      <*  sepElemIf (isJust mkind) fsep
+      <*> ppOptKind mkind
   astPretty (ClsTyDef _ ntype htype) =
     resultPretty.(nestMode onsideIndent) $ constrElem ClsTyDef
       -- mySep
