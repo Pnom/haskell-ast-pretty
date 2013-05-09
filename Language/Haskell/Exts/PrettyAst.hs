@@ -1111,7 +1111,7 @@ instance PrettyAst Exp where
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty e)
   astPrettyPrec _ (RecConstr _ c fieldList) = resultPretty $ constrElem RecConstr
-    <*> (annInfoElem $ astPretty c) <*> braceList (annListElem annNoInfoElem fieldList)
+    <*> annNoInfoElem (astPretty c) <*> braceList (annListElem annNoInfoElem fieldList)
   astPrettyPrec _ (RecUpdate _ e fieldList) = resultPretty $ constrElem RecUpdate
     <*> (annInfoElem $ astPretty e) <*> braceList (annListElem annNoInfoElem fieldList)
   -- Lists
@@ -1129,11 +1129,11 @@ instance PrettyAst Exp where
   astPrettyPrec _ (EnumFromTo _ from to) =
     resultPretty $ constrElem EnumFromTo
       <*  infoElem "["
-      <*> (annInfoElem $ astPretty from)
+      <*> annNoInfoElem (astPretty from)
       <*  sepElem myFsepSimple
       <*  infoElem ".."
       <*  sepElem myFsepSimple
-      <*> (annInfoElem $ astPretty to)
+      <*> annNoInfoElem (astPretty to)
       <*  infoElem "]"
   astPrettyPrec _ (EnumFromThen _ from thenE) =
     resultPretty $ constrElem EnumFromThen
@@ -1194,11 +1194,11 @@ instance PrettyAst Exp where
     resultPretty $ constrElem VarQuote <* infoElem "\'" <*> (annInfoElem $ astPretty x)
   astPrettyPrec _ (QuasiQuote _ n qt) =
     resultPretty $ constrElem QuasiQuote
-      <*  infoElem "["
-      <*> infoElem n
-      <*  infoElem "|"
-      <*> infoElem qt
-      <*  infoElem "|]"
+      <*  noInfoElem "["
+      <*> noInfoElem n
+      <*  noInfoElem "|"
+      <*> noInfoElem qt
+      <*  noInfoElem "|]"
   -- Hsx
   astPrettyPrec _ (XTag _ n attrs mattr cs) = unimplemented
   astPrettyPrec _ (XETag _ n attrs mattr) =
