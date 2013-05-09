@@ -1873,10 +1873,9 @@ instance PrettyAst Context where
       <* infoElem "=>"
   astPretty (CxSingle _ asst) =
     resultPretty.(nestMode onsideIndent) $ constrElem CxSingle
-      <* infoElem "("
       <*> annNoInfoElem (astPretty asst)
-      <*  infoElem ")"
-      <*  sepElem fsep <* infoElem "=>"
+      <*  sepElem fsep
+      <*  infoElem "=>"
   astPretty (CxTuple _ assts) =
     resultPretty.(nestMode onsideIndent) $ constrElem CxTuple
       <*> parenList (annListElem annNoInfoElem assts) -- myFsep and parenList -> myFsep and myFsepSimple ???
