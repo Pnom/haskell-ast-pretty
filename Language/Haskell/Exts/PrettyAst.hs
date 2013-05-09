@@ -459,8 +459,8 @@ ppFsepDhead dh = annNoInfoElem.resultPretty $ constrElem DHead
 
 ppInstHeadInDecl :: InstHead a -> AstElem (InstHead SrcSpanInfo)
 ppInstHeadInDecl ih = annNoInfoElem.resultPretty $ constrElem IHead
-  <*> (annNoInfoElem $ astPretty qn)
-  <*  sepElem fsep
+  <*> annInfoElem (astPretty qn)
+  <*  sepElemIf (not $ null ts) fsep
   <*> intersperse (sepElem fsep) (map (annNoInfoElem.ppAType) ts)
   where
     (qn, ts) = sInstHead ih
