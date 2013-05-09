@@ -757,25 +757,26 @@ instance PrettyAst QualConDecl where
     resultPretty.(nestMode onsideIndent) $ constrElem QualConDecl
       <*> traverse (\ x -> (ppForall $ annListElem annNoInfoElem x) <* sepElem myFsep) mtvs
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
-      <*> (annNoInfoElem $ astPretty con)
+      <*> pointsInfoElem (astPretty con)
 
 -- --------------------------------------------------------------------------
 
 instance PrettyAst GadtDecl where
   astPretty (GadtDecl _ name ty) =
     resultPretty $ constrElem GadtDecl
-      <*> (annInfoElem $ astPretty name)
+      <*> annNoInfoElem (astPretty name)
       <*  sepElem myFsep
       <*  infoElem "::"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty ty)
+      <*> annNoInfoElem (astPretty ty)
 
 -- --------------------------------------------------------------------------
 
 instance PrettyAst ConDecl where
   astPretty (RecDecl _ name fieldList) =
     resultPretty $ constrElem RecDecl
-      <*> (annInfoElem $ astPretty name)
+      <*> annNoInfoElem (astPretty name)
+      <*  sepElem hsep
       <*> braceList (annListElem annNoInfoElem fieldList)
   astPretty (ConDecl _ name typeList) =
     resultPretty.(nestMode onsideIndent) $ constrElem ConDecl
@@ -797,11 +798,11 @@ instance PrettyAst ConDecl where
 instance PrettyAst FieldDecl where
   astPretty (FieldDecl _ names ty) =
     resultPretty $ constrElem FieldDecl
-      <*> intersperse (infoElem "," <* sepElem myFsepSimple) (annListElem annNoInfoElem names)
+      <*> intersperse (noInfoElem "," <* sepElem myFsepSimple) (annListElem annNoInfoElem names)
       <*  sepElem myFsepSimple
       <*  infoElem "::"
       <*  sepElem myFsepSimple
-      <*> (annInfoElem $ astPretty ty)
+      <*> annNoInfoElem (astPretty ty)
 
 -- --------------------------------------------------------------------------
 
