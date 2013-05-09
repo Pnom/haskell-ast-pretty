@@ -887,11 +887,10 @@ instance PrettyAst Type where
         <*  sepElem myFsep
         <*> (annNoInfoElem $ ppAType b)
   astPrettyPrec _ (TyVar _ t)  = resultPretty $ constrElem TyVar  <*> (annNoInfoElem $ astPretty t)
-  astPrettyPrec _ (TyCon _ t)  = resultPretty $ constrElem TyCon <*> (annNoInfoElem $ astPretty t)
+  astPrettyPrec _ (TyCon _ t)  = resultPretty $ constrElem TyCon <*> pointsInfoElem (astPretty t)
   astPrettyPrec _ (TyParen _ t)  = resultPretty $ constrElem TyParen <*> t'
     where t' = enclose (infoElem "(") (infoElem ")") ((annNoInfoElem $ astPretty t))
   astPrettyPrec _ (TyInfix _ a op b)  = resultPretty.(nestMode onsideIndent) $ constrElem TyInfix
-
     <*> (annNoInfoElem $ astPretty a)
     <* sepElem myFsep
     <*> annNoInfoElem (ppQNameInfix op)
@@ -914,13 +913,11 @@ instance PrettyAst TyVarBind where
   astPretty (KindedVar _ var kind) =
     resultPretty.parens.(nestMode onsideIndent) $ constrElem KindedVar
       -- myFsep
-      <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty var)
+      <*> annNoInfoElem (astPretty var)
       <*  sepElem myFsep
       <*  infoElem "::"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty kind)
-      <*  sepElem myFsep
+      <*> annNoInfoElem (astPretty kind)
   astPretty (UnkindedVar _ var) = resultPretty $ constrElem UnkindedVar <*> annNoInfoElem (astPretty var)
 
 ppForall :: [AstElem a] -> AstElem [a]
@@ -930,19 +927,19 @@ ppForall vs = (nestMode onsideIndent) $ infoElem "forall" *> sepElem myFsep *> i
 ---------------------------- Kinds ----------------------------
 
 instance PrettyAst Kind where
-  astPrettyPrec _ (KindStar _) = resultPretty $ constrElem KindStar <* infoElem "*"
-  astPrettyPrec _ (KindBang _) = resultPretty $ constrElem KindBang <* infoElem "!"
+  astPrettyPrec _ (KindStar _) = resultPretty $ constrElem KindStar <* noInfoElem "*"
+  astPrettyPrec _ (KindBang _) = resultPretty $ constrElem KindBang <* noInfoElem "!"
   astPrettyPrec n (KindFn _ a b)  =
     resultPretty.(nestMode onsideIndent).parensIf (n > 0) $ constrElem KindFn
       -- myFsep
-      <*> (annInfoElem $ astPrettyPrec 1 a)
+      <*> annNoInfoElem (astPrettyPrec 1 a)
       <*  sepElem myFsep
       <*  infoElem "->"
       <*  sepElem myFsep
-      <*> (annInfoElem $ astPretty b)
+      <*> annNoInfoElem (astPretty b)
   astPrettyPrec _ (KindParen _ k) =
-    resultPretty.parens $ constrElem KindParen <*> (annInfoElem $ astPretty k)
-  astPrettyPrec _ (KindVar _ n) = resultPretty $ constrElem KindVar <*> (annInfoElem $ astPretty n)
+    resultPretty.parens $ constrElem KindParen <*> annNoInfoElem (astPretty k)
+  astPrettyPrec _ (KindVar _ n) = resultPretty $ constrElem KindVar <*> annNoInfoElem (astPretty n)
 
 ppOptKind :: Maybe (Kind a) -> AstElem (Maybe (Kind SrcSpanInfo))
 ppOptKind k = traverse (\ x -> infoElem "::" *> (annInfoElem $ astPretty x)) k
