@@ -179,12 +179,12 @@ instance PrettyAst Decl where
       <*> (annNoInfoElem $ astPretty htype)
   astPretty (TypeFamDecl _ head mkind) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem TypeFamDecl
-      <* infoElem "type"
+      <*  infoElem "type"
       <*  sepElem fsep
-      <* infoElem "family"
-      <* sepElem fsep
+      <*  infoElem "family"
+      <*  sepElem fsep
       <*> ppFsepDhead head
-      <* sepElem fsep
+      <*  sepElemIf (isJust mkind) fsep
       <*> ppOptKind mkind
   astPretty (DataDecl _ don mContext head constrList mDeriving) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem DataDecl
@@ -202,7 +202,7 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppFsepDhead hd
-      <*  sepElem fsep
+      <*  sepElemIf (isJust mkind) fsep
       <*> ppOptKind mkind
       <*  sepElem fsep
       <*  infoElem "where"
@@ -220,7 +220,7 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
       <*> ppFsepDhead head
-      <*  sepElem fsep
+      <*  sepElemIf (isJust mKind) fsep
       <*> ppOptKind mKind
   astPretty (TypeInsDecl _ tl tr) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem TypeInsDecl
@@ -252,7 +252,7 @@ instance PrettyAst Decl where
       <*  infoElem "instance"
       <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty t)
-      <*  sepElem fsep
+      <*  sepElemIf (isJust mKind) fsep
       <*> ppOptKind mKind
       <*  infoElem "where"
       <*  sepElem myVcat
