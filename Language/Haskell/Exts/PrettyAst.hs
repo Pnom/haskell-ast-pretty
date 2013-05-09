@@ -942,7 +942,7 @@ instance PrettyAst Kind where
   astPrettyPrec _ (KindVar _ n) = resultPretty $ constrElem KindVar <*> annNoInfoElem (astPretty n)
 
 ppOptKind :: Maybe (Kind a) -> AstElem (Maybe (Kind SrcSpanInfo))
-ppOptKind k = traverse (\ x -> infoElem "::" *> (annInfoElem $ astPretty x)) k
+ppOptKind k = traverse (\ x -> infoElem "::" *> sepElem fsep *> annNoInfoElem (astPretty x)) k
 
 ------------------- Functional Dependencies -------------------
 
