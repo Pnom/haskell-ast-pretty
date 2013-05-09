@@ -1428,8 +1428,8 @@ instance PrettyAst Pat where
       <*  infoElem "("
       <*> annNoInfoElem (astPretty pat)
       <*  infoElem ")"
-  astPrettyPrec _ (PRec _ c fields) = resultPretty.braces $ constrElem PRec
-    <*> (annInfoElem $ astPretty c)
+  astPrettyPrec _ (PRec _ c fields) = resultPretty $ constrElem PRec
+    <*> annNoInfoElem (astPretty c)
     <*> braceList (annListElem annNoInfoElem fields)
   -- special case that would otherwise be buggy
   astPrettyPrec _ (PAsPat _ name (PIrrPat _ pat)) =
@@ -1550,8 +1550,8 @@ instance PrettyAst PatField where
       <*  infoElem "="
       <*  sepElem myFsep
       <*> (annInfoElem $ astPretty p)
-  astPretty (PFieldPun _ name) = resultPretty $ constrElem PFieldPun <*> (annInfoElem $ astPretty name)
-  astPretty (PFieldWildcard _) = resultPretty $ constrElem PFieldWildcard <* infoElem ".."
+  astPretty (PFieldPun _ name) = resultPretty $ constrElem PFieldPun <*> annNoInfoElem (astPretty name)
+  astPretty (PFieldWildcard _) = resultPretty $ constrElem PFieldWildcard <* noInfoElem ".."
 
 --------------------- Regular Patterns -------------------------
 
