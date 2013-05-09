@@ -824,33 +824,16 @@ instance PrettyAst BangType where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Deriving where
-  astPretty (Deriving _ []) = resultPretty $ constrElem Deriving <* infoElem "deriving" <* sepElem hsep <*> parenList []
-  astPretty (Deriving _ [ih@(IHead _ d [])]) =
-    resultPretty $ constrElem Deriving
-       <* infoElem "deriving" <* sepElem hsep <*> sequenceA [(annNoInfoElem $ astPretty ih)]
   astPretty (Deriving _ ihs) =
-    resultPretty $ constrElem Deriving
-       <* infoElem "deriving" <* sepElem hsep <*> parenList (annListElem annNoInfoElem ihs)
+    resultPretty $ constrElem Deriving <* infoElem "deriving" <* sepElem hsep <*> iheads
+    where
+      iheads = case ihs of
+          []                  -> pure []
+          [ih@(IHead _ d [])] -> sequenceA [(annInfoElem $ astPretty ih)]
+          _                   -> parenList (annListElem annNoInfoElem ihs)
 
 ppDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
-ppDeriving (Deriving _ []) = constrElem Deriving <*> pure []
-ppDeriving (Deriving _ is) = annNoInfoElem.resultPretty $ constrElem Deriving
-  <*  infoElem "deriving"
-  <*  sepElem hsep
-  <*> encloseIf useParen (noInfoElem "(")  (noInfoElem ")") ppIheads
-  where
-    iheads = map sInstHead is
-    useParen = case iheads of
-      [(qn, [])] -> False
-      _ -> True
-    ppIheads = case iheads of
-      [(qn, [])] -> sequenceA [annNoInfoElem.resultPretty $ constrElem IHead <*> (annNoInfoElem $ astPretty qn) <*> pure []]
-      _ -> (nestMode onsideIndent) $ sequenceA  (map ppDer iheads)
-    ppDer (qn, ts) = annNoInfoElem.resultPretty $ constrElem IHead
-      -- mySep
-      <*> (annNoInfoElem $ astPretty qn)
-      <*  sepElem fsep
-      <*> intersperse parenListSep (annListElem annNoInfoElem ts)
+ppDeriving d = annNoInfoElem $ astPretty d
 
 ------------------------- Types -------------------------
 
