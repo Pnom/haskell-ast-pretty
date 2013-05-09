@@ -621,7 +621,7 @@ instance PrettyAst InstDecl where
         cSep2 = sepElem myVcat <* infoElem "|" <* sepElem hsep
         constrList' (e1:e2:es) = sequenceA $ (e1 <* cSep1) : e2 : (map (cSep2 *>) es)
         constrList' es = sequenceA es
-  astPretty (InsGData _ don ntype optkind gadtList derives) =
+  astPretty (InsGData _ don ntype mkind gadtList derives) =
     resultPretty.(nestMode onsideIndent) $ onsideHead (constrElem InsGData)
       <*  sepElem myVcat
       <*> ppBody classIndent (annListElem annNoInfoElem gadtList)
@@ -632,8 +632,8 @@ instance PrettyAst InstDecl where
         <*> (annInfoElem $ astPretty don)
         <*  sepElem fsep
         <*> (annInfoElem $ astPretty ntype)
-        <*  sepElem fsep
-        <*> ppOptKind optkind
+        <*  sepElemIf (isJust mkind) fsep
+        <*> ppOptKind mkind
         <*  sepElem fsep
         <*  infoElem "where"
 
