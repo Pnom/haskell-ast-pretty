@@ -162,10 +162,7 @@ instance PrettyAst ImportSpec where
   astPretty (IThingAll _ name)           =
     resultPretty $ constrElem IThingAll <*> (annNoInfoElem $ astPretty name) <* infoElem "(..)"
   astPretty (IThingWith _ name nameList) =
-    resultPretty $ constrElem IThingWith <*> (annNoInfoElem $ astPretty name) <*> parenList (annListElem annNoInfoElem nameList)
-
-identDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
-identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
+   resultPretty $ constrElem IThingWith <*> (annNoInfoElem $ astPretty name) <*> parenList (annListElem annNoInfoElem nameList)
 
 -------------------------  Declarations ------------------------------
 
