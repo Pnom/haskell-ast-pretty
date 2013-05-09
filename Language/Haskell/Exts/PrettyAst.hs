@@ -504,19 +504,19 @@ instance PrettyAst InstHead where
   astPretty (IHead _ qn ts) =
     resultPretty.(nestMode onsideIndent) $ constrElem IHead
       -- mySep
-      <*> (annInfoElem $ astPretty qn)
-      <*  sepElem fsep
-      <*> intersperse (sepElem fsep) (annListElem annInfoElem ts)
+      <*> annNoInfoElem (astPretty qn)
+      <*  sepElemIf (not $ null ts) fsep
+      <*> intersperse (sepElem fsep) (annListElem annNoInfoElem ts)
   astPretty (IHInfix _ ta qn tb) =
     resultPretty.(nestMode onsideIndent) $ constrElem IHInfix
       -- mySep
-      <*> (annInfoElem $ astPretty ta)
+      <*> annNoInfoElem (astPretty ta)
       <*  sepElem fsep
-      <*> (annInfoElem $ astPretty qn)
+      <*> annNoInfoElem (astPretty qn)
       <*  sepElem fsep
-      <*> (annInfoElem $ astPretty tb)
+      <*> annInfoElem (astPretty tb)
   astPretty (IHParen _ ih) =
-    resultPretty.parens $ constrElem IHParen <*> (annInfoElem $ astPretty ih)
+    resultPretty.parens $ constrElem IHParen <*> (annNoInfoElem $ astPretty ih)
 
 -- --------------------------------------------------------------------------
 
