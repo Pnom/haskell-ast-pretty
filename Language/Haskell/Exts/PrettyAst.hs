@@ -444,7 +444,7 @@ instance PrettyAst Decl where
       <*  sepElem fsep
       <*  infoElem "#-}"
 
-ppConstrList :: PrettyAst ast => [ast a] -> AstElem [ast SrcSpanInfo]
+ppConstrList :: (Annotated ast, PrettyAst ast) => [ast a] -> AstElem [ast SrcSpanInfo]
 ppConstrList [] = sequenceA []
 ppConstrList cs = infoElem "=" *> sepElem hsep
   *> intersperse (sepElem hsep *> infoElem "|" *> sepElem myVcat) (annListElem annNoInfoElem cs)
@@ -467,7 +467,7 @@ ppInstHeadInDecl ih = annNoInfoElem.resultPretty $ constrElem IHead
 
 -- --------------------------------------------------------------------------
 
-ppWarnDepr :: PrettyAst ast => ([ast a], String) -> AstElem ([ast SrcSpanInfo], String)
+ppWarnDepr ::  (Annotated ast, PrettyAst ast) => ([ast a], String) -> AstElem ([ast SrcSpanInfo], String)
 ppWarnDepr ([], txt) = pure (,) <*> pure []  <*> infoElem txt
 ppWarnDepr (ns, txt) = pure (,)
   <*> intersperse (infoElem "," <* sepElem fsep) (annListElem annNoInfoElem ns)
@@ -954,7 +954,7 @@ instance PrettyAst FunDep where
       <*  infoElem "->"
       <*> intersperse (sepElem myFsep) (annListElem annNoInfoElem to)
 
-ppFunDeps :: PrettyAst ast => [ast a] -> AstElem [ast SrcSpanInfo]
+ppFunDeps :: (Annotated ast, PrettyAst ast) => [ast a] -> AstElem [ast SrcSpanInfo]
 ppFunDeps []  = sequenceA []
 ppFunDeps fds = (nestMode onsideIndent) $ infoElem "|" *> sepElem myFsep *> intersperse (infoElem "," <* sepElem myFsep) (annListElem annNoInfoElem fds)
 
@@ -1969,42 +1969,75 @@ space x = do
 -- --------------------------------------------------------------------------
 -- AstElem definition
 
-type AstElem = WriterT [SrcSpan] DocM
+data AstElemInfo = AstElemInfo {
+  startPos     :: Maybe SrcLoc,
+  infoPoints   :: [SrcSpan]
+} deriving Show
+
+instance Monoid AstElemInfo where
+   mempty  = AstElemInfo Nothing []
+   mappend (AstElemInfo x xs) (AstElemInfo y ys) = AstElemInfo (startPosCalc x y) ps
+    where
+      startPosCalc Nothing p = p
+      startPosCalc p _ = p
+      ps = xs ++ ys
+
+
+type AstElem = WriterT AstElemInfo DocM
+
 
 -- --------------------------------------------------------------------------
 -- AstElem utils
 
+spanFromString :: String -> DocM SrcSpan
+spanFromString s = do
+  sp <- getPos
+  _  <- format s
+  ep <- getPos
+  return $ mkSrcSpan sp ep
+
+stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
+stringElem f s = do
+  start <- getPos
+  span  <- lift $ spanFromString s
+  tell $ AstElemInfo (Just start) (f $ SrcSpanInfo span [span])
+  return s
+
+noPoints, mainPoint, allPoints :: SrcSpanInfo -> [SrcSpan]
+noPoints  _ = []
+mainPoint (SrcSpanInfo s _)  = [s]
+allPoints (SrcSpanInfo _ ps) = ps
+
+annElem :: (Annotated ast) => (SrcSpanInfo -> [SrcSpan]) -> DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
+annElem f a = do
+  a' <- lift a
+  let span = ann a'
+  let (SrcSpan fl ln cl _ _) = srcInfoSpan span
+  tell $ AstElemInfo (Just $ SrcLoc fl ln cl) (f span)
+  return a'
+
 infoElem :: String -> AstElem String
-infoElem s = annInfoElem $ format s >> return s
+infoElem s = stringElem mainPoint s
 
 noInfoElem :: String -> AstElem String
-noInfoElem s = annNoInfoElem $  format s >> return s
+noInfoElem s = stringElem noPoints s
 
 implicitElem :: String -> AstElem String
-implicitElem s = annInfoElem $ format "" >> return s
+implicitElem s = stringElem mainPoint "" >> return s
 
 sepElem :: DocM() -> AstElem ()
-sepElem s = annNoInfoElem s
+sepElem s = lift s
 
 sepElemIf :: Bool -> DocM() -> AstElem()
 sepElemIf p s = sepElem $ if p then s else pure ()
 
-annNoInfoElem :: DocM a -> AstElem a
-annNoInfoElem a = lift a
+annNoInfoElem, annInfoElem, pointsInfoElem :: (Annotated ast) => DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
 
-annInfoElem :: DocM a -> AstElem a
-annInfoElem a = do
-  sp <- getPos
-  a' <- lift a
-  ep <- getPos
-  tell [mkSrcSpan sp ep]
-  return a'
+annNoInfoElem a = annElem noPoints a
 
-pointsInfoElem  :: (Annotated ast) => DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
-pointsInfoElem a = do
-  a' <- lift a
-  tell.srcInfoPoints $ ann a'
-  return a'
+annInfoElem a = annElem mainPoint a
+
+pointsInfoElem a = annElem allPoints a
 
 annStub = undefined
 
@@ -2034,10 +2067,9 @@ nestMode f a = do
 
 resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
 resultPretty a = do
-  sp <- getPos
-  (a', ps) <- runWriterT a
-  ep <- getPos
-  let span = SrcSpanInfo (mkSrcSpan sp ep) ps
+  (a', AstElemInfo (Just start) ps) <- runWriterT a
+  end <- getPos
+  let span = SrcSpanInfo (mkSrcSpan start end) ps
   return $ amap (const span) a'
 
 -- --------------------------------------------------------------------------
