@@ -44,6 +44,11 @@ renderWithMode fl mode doc = evalState (runReaderT (astPretty doc) mode) (defDoc
 renderWithDefMode :: (Annotated ast, PrettyAst ast) => String -> ast SrcSpanInfo -> ast SrcSpanInfo
 renderWithDefMode fl doc = renderWithMode fl defPrettyMode doc
 
+-- | render the document with a given file name and mode.
+renderWithTrace :: (Annotated ast, PrettyAst ast) => String -> PrettyMode -> ast SrcSpanInfo -> (ast SrcSpanInfo, [String])
+renderWithTrace fl mode doc = (res, prettifyingTrace s)  
+  where (res, s) = runState (runReaderT (astPretty doc) mode) (defDocState fl) 
+
 -- --------------------------------------------------------------------------
 
 class PrettyAst ast where
@@ -2247,7 +2252,7 @@ testDoc l f = do
 
   ParseOk parsingRes <- parseFile f
 
-  let (prettyRes, prettyState) = runState (runReaderT (astPretty parsingRes) (setLayoutToDefMode l)) (defDocState f)
+  let (prettyRes, trace) = renderWithTrace f (setLayoutToDefMode l) parsingRes
 
   putStrLn "raw parsing result"
   putStrLn $ show parsingRes
@@ -2265,7 +2270,7 @@ testDoc l f = do
   putStrLn ""
 
   putStrLn "ast prettifying trace:"
-  putStrLn . show $ prettifyingTrace prettyState
+  putStrLn $ show trace
 
   putStrLn "----------------------------------------"
   putStrLn "prettyPrintWithMode parsingRes:"
