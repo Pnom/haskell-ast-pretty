@@ -65,9 +65,9 @@ reportPrettifying l f = do
 
 reportPrettifyingAllLayouts :: FilePath -> IO ()
 reportPrettifyingAllLayouts f = do
-  testDoc PPOffsideRule f
-  testDoc PPSemiColon   f
-  testDoc PPInLine      f
+  reportPrettifying PPOffsideRule f
+  reportPrettifying PPSemiColon   f
+  reportPrettifying PPInLine      f
 
 data TestElem = TestElem {
   input    :: Module SrcSpanInfo,
@@ -78,4 +78,3 @@ testElemWithLayout e l = (file, pretty == example e l)
   where
     file   = srcSpanFilename . srcInfoSpan . ann $ input e
     pretty = renderWithMode file (setLayoutToDefMode l) $ input e
-
