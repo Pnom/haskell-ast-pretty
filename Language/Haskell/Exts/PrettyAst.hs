@@ -7,7 +7,7 @@ module Language.Haskell.Exts.PrettyAst
   , defPrettyMode
   , PR.Style(..)
   , PR.style
-  , PR.Mode(..)
+  , PR.PPHsMode(..)
   , PR.defaultMode
   , DocM
   ) where
