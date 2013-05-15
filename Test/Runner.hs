@@ -23,8 +23,8 @@ simpleSpanInfo s = (simpleSpan $ srcInfoSpan s, map simpleSpan (srcInfoPoints s)
   where
     simpleSpan s = (srcSpanStartLine s, srcSpanStartColumn s, srcSpanEndLine s, srcSpanEndColumn s)
 
-testDoc :: PPLayout -> FilePath -> IO ()
-testDoc l f = do
+reportPrettifying :: PPLayout -> FilePath -> IO ()
+reportPrettifying l f = do
   putStrLn ""
   putStrLn $ "File: " ++ f ++ "; Layout: " ++
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
@@ -63,8 +63,8 @@ testDoc l f = do
   putStrLn "----------------------------------------"
   putStrLn ""
 
-testAllMode :: FilePath -> IO ()  
-testAllMode f = do
+reportPrettifyingAllLayouts :: FilePath -> IO ()
+reportPrettifyingAllLayouts f = do
   testDoc PPOffsideRule f
   testDoc PPSemiColon   f
   testDoc PPInLine      f
@@ -78,4 +78,4 @@ testElemWithLayout e l = (file, pretty == example e l)
   where
     file   = srcSpanFilename . srcInfoSpan . ann $ input e
     pretty = renderWithMode file (setLayoutToDefMode l) $ input e
-  
+
