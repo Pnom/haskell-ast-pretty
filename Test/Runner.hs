@@ -2,6 +2,7 @@ import Language.Haskell.Exts.PrettyAst
 import Language.Haskell.Exts.Annotated
 import System.FilePath
 import Data.Traversable
+import Data.Either
 
 setLayoutToDefPRMode l = let m = defaultMode in
   PPHsMode
@@ -67,4 +68,14 @@ testAllMode f = do
   testDoc PPOffsideRule f
   testDoc PPSemiColon   f
   testDoc PPInLine      f
-  testDoc PPNoLayout    f
+
+data TestElem = TestElem {
+  input    :: Module SrcSpanInfo,
+  example :: (PPLayout -> Module SrcSpanInfo)
+}
+
+testElemWithLayout e l = (file, pretty == example e l)
+  where
+    file   = srcSpanFilename . srcInfoSpan . ann $ input e
+    pretty = renderWithMode file (setLayoutToDefMode l) $ input e
+  
