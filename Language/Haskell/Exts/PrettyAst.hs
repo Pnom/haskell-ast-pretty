@@ -37,12 +37,12 @@ defPrettyMode = PrettyMode PR.defaultMode PR.style
 type DocM = ReaderT PrettyMode (State DocState)
 
 -- | render the document with a given file name and mode.
-renderWithMode :: String -> PrettyMode -> DocM a -> a
-renderWithMode fl mode doc = evalState (runReaderT doc mode) (defDocState fl)
+renderWithMode :: (Annotated ast, PrettyAst ast) => String -> PrettyMode -> ast SrcSpanInfo -> ast SrcSpanInfo
+renderWithMode fl mode doc = evalState (runReaderT (astPretty doc) mode) (defDocState fl)
 
 -- | render the document with a given file name and 'defaultMode'.
-renderWithDefMode :: String -> DocM a -> a
-renderWithDefMode fl a = renderWithMode fl defPrettyMode a
+renderWithDefMode :: (Annotated ast, PrettyAst ast) => String -> ast SrcSpanInfo -> ast SrcSpanInfo
+renderWithDefMode fl doc = renderWithMode fl defPrettyMode doc
 
 -- --------------------------------------------------------------------------
 
