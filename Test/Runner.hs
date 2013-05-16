@@ -35,12 +35,18 @@ reportPrettifying l filePath = do
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
 
   ParseOk parsingRes <- parseFile filePath
-  let fileName = takeFileName filePath
-
-  let (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
+  let
+    fileName = takeFileName filePath
+    (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
+    standartPrettyStr  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
+    ParseOk standartPretty = parseFileContents standartPrettyStr
 
   putStrLn "parsing result"
   putStrLn . show $ fmap (\x -> SrcSpanInfo' $ setSpanFilename fileName x) parsingRes
+  putStrLn ""
+
+  putStrLn "result of standart prettifying"
+  putStrLn . show $ fmap (\x -> SrcSpanInfo' $ setSpanFilename fileName x) standartPretty
   putStrLn ""
 
   putStrLn "result of ast prettifying"
@@ -51,11 +57,11 @@ reportPrettifying l filePath = do
   putStrLn $ show trace
 
   putStrLn "----------------------------------------"
-  putStrLn "prettyPrintWithMode parsingRes:"
-  putStrLn $ prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
-  putStrLn "----------------------------------------"
   putStrLn "exactPrint parsingRes:"
   putStrLn $ exactPrint parsingRes []
+  putStrLn "----------------------------------------"
+  putStrLn "prettyPrintWithMode parsingRes:"
+  putStrLn standartPrettyStr
   putStrLn "----------------------------------------"
   putStrLn "exactPrint prettyRes:"
   putStrLn $ exactPrint prettyRes []
