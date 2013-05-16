@@ -1,6 +1,7 @@
 import Language.Haskell.Exts.PrettyAst
 import Language.Haskell.Exts.Annotated
 import System.FilePath
+import Data.List
 
 setLayoutToDefPRMode l = let m = defaultMode in
   PPHsMode
@@ -16,10 +17,11 @@ setLayoutToDefPRMode l = let m = defaultMode in
 
 setLayoutToDefMode l = PrettyMode (setLayoutToDefPRMode l) style
 
-simpleSpanInfo :: SrcSpanInfo -> ((Int, Int, Int, Int), [(Int, Int, Int, Int)])
-simpleSpanInfo s = (simpleSpan $ srcInfoSpan s, map simpleSpan (srcInfoPoints s))
-  where
-    simpleSpan s = (srcSpanStartLine s, srcSpanStartColumn s, srcSpanEndLine s, srcSpanEndColumn s)
+data SrcSpanInfo' = SrcSpanInfo' SrcSpanInfo
+instance Show SrcSpanInfo' where
+  show (SrcSpanInfo' (SrcSpanInfo s ps)) =
+    "(SrcSpanInfo (" ++ simpleSpan s ++ ") [" ++ intercalate ", " (map simpleSpan ps) ++ "])"
+    where simpleSpan (SrcSpan f sl sc el ec) = "SrcSpan \"" ++ f ++ "\" " ++ show sl ++ " " ++ show sc ++ " " ++ show el ++ " " ++ show ec
 
 reportPrettifying :: PPLayout -> FilePath -> IO ()
 reportPrettifying l f = do
@@ -31,19 +33,12 @@ reportPrettifying l f = do
 
   let (prettyRes, trace) = renderWithTrace f (setLayoutToDefMode l) parsingRes
 
-  putStrLn "raw parsing result"
-  putStrLn $ show parsingRes
-  putStrLn ""
-  putStrLn "raw  result of ast prettifying"
-  putStrLn $ show prettyRes
+  putStrLn "parsing result"
+  putStrLn . show $ fmap SrcSpanInfo' parsingRes
   putStrLn ""
 
-  putStrLn "short parsing result"
-  putStrLn . show $ fmap simpleSpanInfo parsingRes
-  putStrLn ""
-
-  putStrLn "short result of ast prettifying"
-  putStrLn . show $ fmap simpleSpanInfo prettyRes
+  putStrLn "result of ast prettifying"
+  putStrLn . show $ fmap SrcSpanInfo' prettyRes
   putStrLn ""
 
   putStrLn "ast prettifying trace:"
