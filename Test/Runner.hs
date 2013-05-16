@@ -17,6 +17,11 @@ setLayoutToDefPRMode l = let m = defaultMode in
 
 setLayoutToDefMode l = PrettyMode (setLayoutToDefPRMode l) style
 
+setSpanFilename :: String -> SrcSpanInfo -> SrcSpanInfo
+setSpanFilename f (SrcSpanInfo s ps) = SrcSpanInfo (changeSpan s) (map changeSpan ps)
+  where
+    changeSpan (SrcSpan _ sl sc el ec) = SrcSpan f sl sc el ec
+
 data SrcSpanInfo' = SrcSpanInfo' SrcSpanInfo
 instance Show SrcSpanInfo' where
   show (SrcSpanInfo' (SrcSpanInfo s ps)) =
@@ -24,17 +29,18 @@ instance Show SrcSpanInfo' where
     where simpleSpan (SrcSpan f sl sc el ec) = "SrcSpan \"" ++ f ++ "\" " ++ show sl ++ " " ++ show sc ++ " " ++ show el ++ " " ++ show ec
 
 reportPrettifying :: PPLayout -> FilePath -> IO ()
-reportPrettifying l f = do
+reportPrettifying l filePath = do
   putStrLn ""
-  putStrLn $ "File: " ++ f ++ "; Layout: " ++
+  putStrLn $ "File: " ++ filePath ++ "; Layout: " ++
     case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
 
-  ParseOk parsingRes <- parseFile f
+  ParseOk parsingRes <- parseFile filePath
+  let fileName = takeFileName filePath
 
-  let (prettyRes, trace) = renderWithTrace f (setLayoutToDefMode l) parsingRes
+  let (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
 
   putStrLn "parsing result"
-  putStrLn . show $ fmap SrcSpanInfo' parsingRes
+  putStrLn . show $ fmap (\x -> SrcSpanInfo' $ setSpanFilename fileName x) parsingRes
   putStrLn ""
 
   putStrLn "result of ast prettifying"
