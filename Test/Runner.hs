@@ -1,8 +1,48 @@
 import Language.Haskell.Exts.PrettyAst
 import Language.Haskell.Exts.Annotated
 import System.FilePath
-import Data.List
+import System.Directory
+import System.Environment (getArgs)
+import Data.List (intercalate)
+import Control.Monad (mapM)
+import Test.TestCases
+import Data.Traversable (traverse)
 
+-- todo
+-- update cabal file
+-- let user chose layout for tests
+
+main :: IO ()
+main = runTests =<< getArgs
+
+-- Run the selected tests - or all of them if the supplied list is empty
+runTests :: [FilePath] -> IO ()
+runTests testsToRun = do
+    files <- if null testsToRun then getDirectoryContents examplesDir else return testsToRun
+    putStrLn "Testing PrettyAst:"
+    _ <- testLayout PPOffsideRule $ map (examplesDir </>) files
+    putStrLn "\nAll parsing tests completed!\n"
+
+-- run tests with specific layout
+testLayout :: PPLayout -> [FilePath] -> IO ()
+testLayout layout ts = mapM (\f -> testModule layout f) ts >> return ()
+
+-- run test with specific layout on the one file
+testModule :: PPLayout -> FilePath -> IO ()
+testModule layout filePath = do
+  ParseOk parsingRes <- parseFile filePath
+  let
+    fileName   = takeFileName filePath
+    prettyTest = renderWithMode fileName (setLayoutToDefMode layout) parsingRes
+  case prettyTestReference layout fileName of
+    Nothing  -> fail $ fileName ++ " : Undefined test case"
+    Just ref ->
+      if ref == prettyTest
+        then return ()
+        else fail $ fileName ++ " : failed test"
+
+-- setup layout to PPHsMode
+setLayoutToDefPRMode :: PPLayout -> PPHsMode
 setLayoutToDefPRMode l = let m = defaultMode in
   PPHsMode
     (classIndent m)
@@ -15,19 +55,24 @@ setLayoutToDefPRMode l = let m = defaultMode in
     l
     (linePragmas m)
 
+setLayoutToDefMode :: PPLayout -> PrettyMode
 setLayoutToDefMode l = PrettyMode (setLayoutToDefPRMode l) style
 
+
+-- change filename in SrcSpanInfo
 setSpanFilename :: String -> SrcSpanInfo -> SrcSpanInfo
 setSpanFilename f (SrcSpanInfo s ps) = SrcSpanInfo (changeSpan s) (map changeSpan ps)
   where
     changeSpan (SrcSpan _ sl sc el ec) = SrcSpan f sl sc el ec
 
+-- use this data to simplify output for show SrcSpanInfo
 data SrcSpanInfo' = SrcSpanInfo' SrcSpanInfo
 instance Show SrcSpanInfo' where
   show (SrcSpanInfo' (SrcSpanInfo s ps)) =
     "(SrcSpanInfo (" ++ simpleSpan s ++ ") [" ++ intercalate ", " (map simpleSpan ps) ++ "])"
     where simpleSpan (SrcSpan f sl sc el ec) = "SrcSpan \"" ++ f ++ "\" " ++ show sl ++ " " ++ show sc ++ " " ++ show el ++ " " ++ show ec
 
+-- make the test and print detailed result
 reportPrettifying :: PPLayout -> FilePath -> IO ()
 reportPrettifying l filePath = do
   putStrLn ""
@@ -68,26 +113,12 @@ reportPrettifying l filePath = do
   putStrLn "----------------------------------------"
   putStrLn ""
 
-reportPrettifyingAllLayouts :: FilePath -> IO ()
-reportPrettifyingAllLayouts f = do
-  reportPrettifying PPOffsideRule f
-  reportPrettifying PPSemiColon   f
-  reportPrettifying PPInLine      f
+reportAll :: IO [()]
+reportAll = traverse (\d -> reportPrettifying PPOffsideRule $ examplesDir </> d) testFiles
 
-data TestElem = TestElem {
-  input    :: Module SrcSpanInfo,
-  example :: (PPLayout -> Module SrcSpanInfo)
-}
+examplesDir :: FilePath
+examplesDir = "examples"
 
-testElemWithLayout l e = (file, pretty == example e l)
-  where
-    file   = srcSpanFilename . srcInfoSpan . ann $ input e
-    pretty = renderWithMode file (setLayoutToDefMode l) $ input e
-
-undefinedModule = Module (SrcSpanInfo (SrcSpan "undefinedModule.hs" 1 1 1 1) []) Nothing [] [] []
-
-withKeyword = TestElem
-  (Module (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 2 1)  [SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 2 1 2 1, SrcSpan "WithKeyword.hs" 2 1 2 1]) Nothing [] [] [PatBind (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 9) []) (PVar (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 5) []) (Ident (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 5) []) "with")) Nothing (UnGuardedRhs (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 6 1 9)  [SrcSpan "WithKeyword.hs" 1 6 1 7]) (Lit (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 8 1 9) []) (Int (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 8 1 9) []) 1 "1"))) Nothing])
-  (\l -> case l of
-    PPOffsideRule -> Module (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 2 1)  [SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 1 1 1 1, SrcSpan "WithKeyword.hs" 2 1 2 1]) Nothing [] [] [PatBind (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 9) []) (PVar (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 5) []) (Ident (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 1 1 5) []) "with")) Nothing (UnGuardedRhs (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 6 1 9)  [SrcSpan "WithKeyword.hs" 1 6 1 7]) (Lit (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 8 1 9) []) (Int (SrcSpanInfo (SrcSpan "WithKeyword.hs" 1 8 1 9) []) 1 "1"))) Nothing]
-    _ ->  undefinedModule)
+testFiles :: [FilePath]
+testFiles = ["WithKeyword.hs"
+  ]
