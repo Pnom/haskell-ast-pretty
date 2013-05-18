@@ -72,6 +72,11 @@ instance Show SrcSpanInfo' where
     "(SrcSpanInfo (" ++ simpleSpan s ++ ") [" ++ intercalate ", " (map simpleSpan ps) ++ "])"
     where simpleSpan (SrcSpan f sl sc el ec) = "SrcSpan \"" ++ f ++ "\" " ++ show sl ++ " " ++ show sc ++ " " ++ show el ++ " " ++ show ec
 
+simplifySpanInfo :: SrcSpanInfo -> ((Int, Int, Int, Int), [(Int, Int, Int, Int)])
+simplifySpanInfo s = (simpleSpan $ srcInfoSpan s, map simpleSpan (srcInfoPoints s))
+  where
+    simpleSpan s = (srcSpanStartLine s, srcSpanStartColumn s, srcSpanEndLine s, srcSpanEndColumn s)
+
 -- make the test and print detailed result
 reportPrettifying :: PPLayout -> FilePath -> IO ()
 reportPrettifying l filePath = do
@@ -86,16 +91,20 @@ reportPrettifying l filePath = do
     standartPrettyStr  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
     ParseOk standartPretty = parseFileContents standartPrettyStr
 
+  putStrLn "raw result of ast prettifying"
+  putStrLn . show $ fmap SrcSpanInfo' prettyRes
+  putStrLn ""
+
   putStrLn "parsing result"
-  putStrLn . show $ fmap (\x -> SrcSpanInfo' $ setSpanFilename fileName x) parsingRes
+  putStrLn . show $ fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) parsingRes
   putStrLn ""
 
   putStrLn "result of standart prettifying"
-  putStrLn . show $ fmap (\x -> SrcSpanInfo' $ setSpanFilename fileName x) standartPretty
+  putStrLn . show $ fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) standartPretty
   putStrLn ""
 
   putStrLn "result of ast prettifying"
-  putStrLn . show $ fmap SrcSpanInfo' prettyRes
+  putStrLn . show $ fmap simplifySpanInfo prettyRes
   putStrLn ""
 
   putStrLn "ast prettifying trace:"
@@ -121,4 +130,6 @@ examplesDir = "examples"
 
 testFiles :: [FilePath]
 testFiles = ["WithKeyword.hs"
+  ,"Ex1.hs"
+  ,"SimpleDeriving.hs"
   ]
