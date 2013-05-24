@@ -122,8 +122,8 @@ reportPrettifying l filePath = do
   putStrLn "----------------------------------------"
   putStrLn ""
 
-reportAll :: IO [()]
-reportAll = traverse (\d -> reportPrettifying PPOffsideRule $ examplesDir </> d) testFiles
+reportPrettyFiles :: PPLayout -> [FilePath] -> IO [()]
+reportPrettyFiles l fs = traverse (\d -> reportPrettifying l $ examplesDir </> d) fs
 
 examplesDir :: FilePath
 examplesDir = "examples"
