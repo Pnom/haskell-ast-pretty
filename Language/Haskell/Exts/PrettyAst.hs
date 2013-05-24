@@ -64,23 +64,56 @@ class PrettyAst ast where
 -------------------------  Pretty-Print a Module --------------------
 
 instance PrettyAst Module where
-  astPretty (Module _ mbHead os imp decls) =
-    resultPretty $ pure impl
-      <*  layoutSep "{"
-      <*> vcatLs os
-      <*  sepElemIf (not $ null os) myVcat
-      <*  layoutSep "}"
-      <*> traverse (\ x -> (annNoInfoElem $ astPretty x) <* sepElem myVcat) mbHead
-      <*  layoutSep "{"
-      <*> prettyLs imp
-      <*  (if not (null imp) && not (null decls) then layoutSep ";" <* sepElem myVcat else pure "")
-      <*> prettyLs decls
-      <*  sepElemIf (not $ null decls) myVcat
-      <*  layoutSep "}"
-      where
-        impl os h i d = Module annStub h os i d
-        vcatLs dl = intersperse (sepElem myVcat <* layoutSep ";") $ annListElem annNoInfoElem dl
-        prettyLs dl = (if isJust mbHead then topLevel else vcatLs) dl
+  astPretty (Module _ mbHead os imp decls)
+    | null imp && null decls = resultPretty emptyBody
+    | isNothing mbHead       = resultPretty vcatBody
+    | otherwise = resultPretty $ do
+      PrettyMode mode _ <- ask
+      case layout mode of
+        PPOffsideRule -> vcatBody
+        PPSemiColon   -> semiColonBody
+        PPInLine      -> semiColonBody
+        PPNoLayout    -> noLayoutBody
+    where
+      body = pure (\os h i d ->  Module annStub h os i d)
+        <*  implicitElem "{"
+        <*> bodyLs (implicitElem ";" <* sepElem myVcat) os
+        <*  implicitElem "}"
+        <*  sepElemIf (not $ null os) myVcat
+        <*> traverse (annNoInfoElem . astPretty) mbHead
+        <*  sepElemIf (isJust mbHead) myVcat
+
+      emptyBody = body <* implicitElem "{" <*> pure [] <* implicitElem ";" <*> pure [] <* implicitElem "}"
+
+      vcatBody = body
+        <*  implicitElem "{"
+        <*> bodyLs (implicitElem ";" <* sepElem myVcat) imp
+        <*  bodySep (implicitElem ";" <* sepElem myVcat)
+        <*> bodyLs (implicitElem ";" <* sepElem myVcat) decls
+        <*  sepElem myVcat
+        <*  implicitElem "}"
+
+      semiColonBody = body
+        <*  nestMode onsideIndent ((infoElem "{") <* sepElem vcat)
+        <*> semiColonLs imp
+        <*> semiColonLs decls
+        <*  infoElem "}"
+
+      semiColonLs xs = nestMode onsideIndent $ (intersperse (infoElem ";" <* sepElem vcat) (annListElem annNoInfoElem xs))
+        <* bodySep (pure "" <* sepElem vcat)
+
+      noLayoutBody = body
+        <*  infoElem "{"
+        <*  sepElem hsep
+        <*> bodyLs (infoElem ";" <* sepElem hsep) imp
+        <*  bodySep (infoElem ";" <* sepElem hsep)
+        <*> bodyLs (infoElem ";" <* sepElem hsep) decls
+        <*  infoElem "}"
+
+      bodyLs sep xs = intersperse sep (annListElem annNoInfoElem xs)
+      bodySep sep = if null imp || null decls then implicitElem ";" else sep
+
+
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
   astPretty (XmlHybrid _ mbHead os imp decls n attrs mattr cs) = unimplemented
 
@@ -2200,17 +2233,6 @@ ppBody f dl =  do
     PPOffsideRule -> implicitElem "{ - just begin of body" *> nest i (intersperse (noInfoElem ";" <* sepElem vcat) dl <* noInfoElem "}")
     PPSemiColon   -> infoElem "{" *> nest i (sepElem vcat *> intersperse (infoElem ";" <* sepElem vcat) dl <* sepElem hsep <* infoElem "}")
     _ -> flatBlock dl
-
-topLevel :: (Annotated ast, PrettyAst ast) => [ast a] -> AstElem [ast SrcSpanInfo]
-topLevel [] = pure []
-topLevel dl = do
-  PrettyMode mode _ <- ask
-  let dl' = annListElem annNoInfoElem dl
-  case layout mode of
-    PPOffsideRule -> intersperse (sepElem vcat) dl'
-    PPSemiColon   -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
-    PPInLine      -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl' <* infoElem "}"
-    PPNoLayout    -> flatBlock dl'
 
 -- --------------------------------------------------------------------------
 -- simplify utils
