@@ -20,7 +20,9 @@ runTests :: [FilePath] -> IO ()
 runTests testsToRun = do
     files <- if null testsToRun then getDirectoryContents examplesDir else return testsToRun
     putStrLn "Testing PrettyAst:"
-    _ <- testLayout PPOffsideRule $ map (examplesDir </>) files
+    let
+      test l = testLayout l $ map (examplesDir </>) files
+    _ <- sequence $ map test [PPOffsideRule, PPSemiColon, PPInLine, PPNoLayout]
     putStrLn "\nAll parsing tests completed!\n"
 
 -- run tests with specific layout
