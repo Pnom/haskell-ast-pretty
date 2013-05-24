@@ -36,12 +36,13 @@ testModule layout filePath = do
   let
     fileName   = takeFileName filePath
     prettyTest = renderWithMode fileName (setLayoutToDefMode layout) parsingRes
+    error msg = fail $ fileName ++ " " ++ show layout ++ " : " ++ msg
   case prettyTestReference layout fileName of
-    Nothing  -> fail $ fileName ++ " " ++ show layout ++ " : Undefined test case"
+    Nothing  -> error "Undefined test case"
     Just ref ->
       if ref == prettyTest
         then return ()
-        else fail $ fileName ++ " : failed test"
+        else error "failed test"
 
 -- setup layout to PPHsMode
 setLayoutToDefPRMode :: PPLayout -> PPHsMode
