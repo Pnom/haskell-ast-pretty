@@ -47,8 +47,8 @@ renderWithDefMode fl doc = renderWithMode fl defPrettyMode doc
 
 -- | render the document with a given file name and mode.
 renderWithTrace :: (Annotated ast, PrettyAst ast) => String -> PrettyMode -> ast SrcSpanInfo -> (ast SrcSpanInfo, [String])
-renderWithTrace fl mode doc = (res, prettifyingTrace s)  
-  where (res, s) = runState (runReaderT (astPretty doc) mode) (defDocState fl) 
+renderWithTrace fl mode doc = (res, prettifyingTrace s)
+  where (res, s) = runState (runReaderT (astPretty doc) mode) (defDocState fl)
 
 -- --------------------------------------------------------------------------
 
@@ -2084,7 +2084,7 @@ resultPretty a = do
 vcat :: DocM ()
 vcat = do
   DocState (SrcLoc f l c) n _ <- get
-  let s = if n < c then line else space $ n - c
+  let s = if n < c then line else space $ n - c + 1
   _ <- s
   return ()
 
