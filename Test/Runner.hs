@@ -35,7 +35,7 @@ testModule layout filePath = do
     fileName   = takeFileName filePath
     prettyTest = renderWithMode fileName (setLayoutToDefMode layout) parsingRes
   case prettyTestReference layout fileName of
-    Nothing  -> fail $ fileName ++ " : Undefined test case"
+    Nothing  -> fail $ fileName ++ " " ++ show layout ++ " : Undefined test case"
     Just ref ->
       if ref == prettyTest
         then return ()
@@ -81,8 +81,7 @@ simplifySpanInfo s = (simpleSpan $ srcInfoSpan s, map simpleSpan (srcInfoPoints 
 reportPrettifying :: PPLayout -> FilePath -> IO ()
 reportPrettifying l filePath = do
   putStrLn ""
-  putStrLn $ "File: " ++ filePath ++ "; Layout: " ++
-    case l of { PPOffsideRule -> "PPOffsideRule"; PPSemiColon -> "PPSemiColon"; PPInLine -> "PPInLine"; PPNoLayout -> "PPNoLayout" }
+  putStrLn $ "File: " ++ filePath ++ "; Layout: " ++ show l
 
   ParseOk parsingRes <- parseFile filePath
   let
@@ -124,6 +123,12 @@ reportPrettifying l filePath = do
 
 reportPrettyFiles :: PPLayout -> [FilePath] -> IO [()]
 reportPrettyFiles l fs = traverse (\d -> reportPrettifying l $ examplesDir </> d) fs
+
+instance Show PPLayout where
+  show PPOffsideRule = "PPOffsideRule"
+  show PPSemiColon   = "PPSemiColon"
+  show PPInLine      = "PPInLine"
+  show PPNoLayout    = "PPNoLayout"
 
 examplesDir :: FilePath
 examplesDir = "examples"
