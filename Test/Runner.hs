@@ -143,4 +143,5 @@ testFiles = ["WithKeyword.hs"
   ,"Ex1.hs"
   ,"SimpleDeriving.hs"
   ,"EmptyContext.hs"
+  ,"ListComp1.hs"
   ]

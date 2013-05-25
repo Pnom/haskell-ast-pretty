@@ -1149,9 +1149,11 @@ instance PrettyAst Exp where
     <*  infoElem ")"
   astPrettyPrec _ (LeftSection _ e op) =
     resultPretty $ constrElem LeftSection
-      <*> (annInfoElem $ astPretty e)
+      <*  infoElem "("
+      <*> annNoInfoElem (astPretty e)
       <*  sepElem hsep
-      <*> (annInfoElem $ astPretty op)
+      <*> annNoInfoElem (astPretty op)
+      <*  infoElem ")"
   astPrettyPrec _ (RightSection _ op e) =
     resultPretty $ constrElem RightSection
       <*> (annInfoElem $ astPretty op)
