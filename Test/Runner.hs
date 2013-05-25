@@ -142,4 +142,5 @@ testFiles :: [FilePath]
 testFiles = ["WithKeyword.hs"
   ,"Ex1.hs"
   ,"SimpleDeriving.hs"
+  ,"EmptyContext.hs"
   ]
