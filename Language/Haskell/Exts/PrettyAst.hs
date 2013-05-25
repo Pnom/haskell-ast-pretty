@@ -600,7 +600,7 @@ instance PrettyAst Match where
 ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
 ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> sepElem hsep *> impl x) mWhere
   where
-    impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*  implicitElem "{" <*> pure [] <* implicitElem "}" 
+    impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*  implicitElem "{" <*> pure [] <* implicitElem "}"
     impl (BDecls  _ l)  = annNoInfoElem.resultPretty $ constrElem BDecls  <*> ppBody whereIndent (annListElem annNoInfoElem l)
     impl (IPBinds _ b)  = annNoInfoElem.resultPretty $ constrElem IPBinds <*> ppBody whereIndent (annListElem annNoInfoElem b)
 
@@ -863,13 +863,21 @@ instance PrettyAst BangType where
 -- --------------------------------------------------------------------------
 
 instance PrettyAst Deriving where
-  astPretty (Deriving _ ihs) =
-    resultPretty $ constrElem Deriving <* infoElem "deriving" <* astTrace "df" <* sepElem hsep <*> iheads
+  astPretty (Deriving _ ihs) = case ihs of
+    [] -> resultPretty $ dheads
+      <*  infoElem "("
+      <*> pure []
+      <*  infoElem ")"
+    [ih@(IHead _ d [])] -> resultPretty $ dheads <*> ilist
+    _ -> resultPretty $ dheads
+      <*  infoElem "("
+      <*  sepElem hsep
+      <*> ilist
+      <*  sepElem hsep
+      <*  infoElem ")"
     where
-      iheads = case ihs of
-          []                  -> pure []
-          [ih@(IHead _ d [])] -> sequenceA [(annInfoElem $ astPretty ih)]
-          _                   -> parenList (annListElem annNoInfoElem ihs)
+      dheads = constrElem Deriving <* infoElem "deriving" <* sepElem hsep
+      ilist = intersperse parenListSep (annListElem annNoInfoElem ihs)
 
 ppDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
 ppDeriving d = annNoInfoElem $ astPretty d
