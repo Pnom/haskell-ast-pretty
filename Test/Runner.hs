@@ -136,7 +136,7 @@ instance Show PPLayout where
   show PPNoLayout    = "PPNoLayout"
 
 examplesDir :: FilePath
-examplesDir = "D:/Work/Haskell/repo/haskell-ast-pretty/Test/examples"
+examplesDir = "Test" </> "examples"
 
 testFiles :: [FilePath]
 testFiles = ["WithKeyword.hs"

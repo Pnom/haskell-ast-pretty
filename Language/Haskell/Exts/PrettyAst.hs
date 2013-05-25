@@ -864,7 +864,7 @@ instance PrettyAst BangType where
 
 instance PrettyAst Deriving where
   astPretty (Deriving _ ihs) =
-    resultPretty $ constrElem Deriving <* infoElem "deriving" <* sepElem hsep <*> iheads
+    resultPretty $ constrElem Deriving <* infoElem "deriving" <* astTrace "df" <* sepElem hsep <*> iheads
     where
       iheads = case ihs of
           []                  -> pure []
