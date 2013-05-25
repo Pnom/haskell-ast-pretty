@@ -600,7 +600,7 @@ instance PrettyAst Match where
 ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
 ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> sepElem hsep *> impl x) mWhere
   where
-    impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*> pure []
+    impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*  implicitElem "{" <*> pure [] <* implicitElem "}" 
     impl (BDecls  _ l)  = annNoInfoElem.resultPretty $ constrElem BDecls  <*> ppBody whereIndent (annListElem annNoInfoElem l)
     impl (IPBinds _ b)  = annNoInfoElem.resultPretty $ constrElem IPBinds <*> ppBody whereIndent (annListElem annNoInfoElem b)
 
@@ -2193,13 +2193,6 @@ parensIf :: Bool -> AstElem a -> AstElem a
 parensIf p d = if p then parens d else d
 
 -- --------------------------------------------------------------------------
--- Wrap in braces and semicolons, with an extra space at the start in
--- case the first doc begins with "-", which would be scanned as {-
-
-flatBlock  :: [AstElem a] -> AstElem [a]
-flatBlock xs = braces $ sepElem hsep *> intersperse (infoElem ";") xs
-
--- --------------------------------------------------------------------------
 -- general utils
 
 layoutChoice a b  = do
@@ -2232,7 +2225,7 @@ ppBody f dl =  do
   case layout mode of
     PPOffsideRule -> implicitElem "{ - just begin of body" *> nest i (intersperse (noInfoElem ";" <* sepElem vcat) dl <* implicitElem "}")
     PPSemiColon   -> infoElem "{" *> nest i (sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl <* sepElem hsep <* infoElem "}")
-    _ -> flatBlock dl
+    _ -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem hsep) dl <* sepElem hsep <* infoElem "}"
 
 -- --------------------------------------------------------------------------
 -- simplify utils
