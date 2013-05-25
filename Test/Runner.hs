@@ -36,7 +36,9 @@ testModule layout filePath = do
   let
     fileName   = takeFileName filePath
     prettyTest = renderWithMode fileName (setLayoutToDefMode layout) parsingRes
-    error msg = fail $ fileName ++ " " ++ show layout ++ " : " ++ msg
+    error msg = do
+      _ <- reportPrettifying layout filePath
+      fail $ fileName ++ " " ++ show layout ++ " : " ++ msg
   case prettyTestReference layout fileName of
     Nothing  -> error "Undefined test case"
     Just ref ->
@@ -134,9 +136,10 @@ instance Show PPLayout where
   show PPNoLayout    = "PPNoLayout"
 
 examplesDir :: FilePath
-examplesDir = "examples"
+examplesDir = "D:/Work/Haskell/repo/haskell-ast-pretty/Test/examples"
 
 testFiles :: [FilePath]
 testFiles = ["WithKeyword.hs"
   ,"Ex1.hs"
+  ,"SimpleDeriving.hs"
   ]
