@@ -77,7 +77,7 @@ instance PrettyAst Module where
     where
       body = pure (\os h i d ->  Module annStub h os i d)
         <*  implicitElem "{"
-        <*> bodyLs (implicitElem ";" <* sepElem myVcat) os
+        <*> intersperse implSemiColon (annListElem annNoInfoElem os)
         <*  implicitElem "}"
         <*  sepElemIf (not $ null os) myVcat
         <*> traverse (annNoInfoElem . astPretty) mbHead
@@ -87,31 +87,33 @@ instance PrettyAst Module where
 
       vcatBody = body
         <*  implicitElem "{"
-        <*> bodyLs (implicitElem ";" <* sepElem myVcat) imp
-        <*  bodySep (implicitElem ";" <* sepElem myVcat)
-        <*> bodyLs (implicitElem ";" <* sepElem myVcat) decls
-        <*  sepElem myVcat
+        <*> intersperse implSemiColon (annListElem annNoInfoElem imp)
+        <*  implicitElem ";"
+        <*  sepElemIf (not $ null imp) myVcat
+        <*> intersperse implSemiColon (map declFn decls)
+        <*  sepElemIf (not $ null decls) myVcat
         <*  implicitElem "}"
 
       semiColonBody = body
-        <*  nestMode onsideIndent ((infoElem "{") <* sepElem vcat)
-        <*> semiColonLs imp
-        <*> semiColonLs decls
+        <*  nestMode onsideIndent (infoElem "{" <* sepElem myVcat)
+        <*> nestMode onsideIndent (intersperse semiColon $ annListElem annNoInfoElem imp)
+        <*  (if not $ null imp then semiColon else pure "")
+        <*> nestMode onsideIndent (intersperse semiColon $ map declFn decls)
         <*  infoElem "}"
-
-      semiColonLs xs = nestMode onsideIndent $ (intersperse (infoElem ";" <* sepElem vcat) (annListElem annNoInfoElem xs))
-        <* bodySep (pure "" <* sepElem vcat)
 
       noLayoutBody = body
         <*  infoElem "{"
-        <*  sepElem hsep
-        <*> bodyLs (infoElem ";" <* sepElem hsep) imp
-        <*  bodySep (infoElem ";" <* sepElem hsep)
-        <*> bodyLs (infoElem ";" <* sepElem hsep) decls
+        <*  sepElem myVcat
+        <*> intersperse semiColon (annListElem annNoInfoElem imp)
+        <*  (if not $ null imp then semiColon else pure "")
+        <*> intersperse semiColon (annListElem annNoInfoElem decls)
         <*  infoElem "}"
 
-      bodyLs sep xs = intersperse sep (annListElem annNoInfoElem xs)
-      bodySep sep = if null imp || null decls then implicitElem ";" else sep
+      semiColon = infoElem ";" <* sepElem myVcat
+      implSemiColon = implicitElem ";" <* sepElem myVcat
+
+      declFn d@(FunBind _ _) = takeAllPointsInfoElem $ astPretty d
+      declFn d = annNoInfoElem $ astPretty d
 
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -352,11 +354,12 @@ instance PrettyAst Decl where
       <*> (annNoInfoElem $ astPretty t)
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
-      <*> intersperse sep (annListElem annNoInfoElem ms)
+      <*> intersperse (sep  <* sepElem myVcat) (annListElem annNoInfoElem ms)
+      <*  (if not $ null ms then sep else pure "")
     where
       sep = do
         PrettyMode mode _ <- ask
-        if layout mode == PPOffsideRule then (infoElem "" <* sepElem myVcat) else infoElem ";"
+        if layout mode == PPOffsideRule then (pure "") else (infoElem ";")
   astPretty (PatBind _ pat mType rhs mBinds) =
     resultPretty $
       (
@@ -2057,13 +2060,15 @@ noPoints  _ = []
 mainPoint (SrcSpanInfo s _)  = [s]
 allPoints (SrcSpanInfo _ ps) = ps
 
-annElem :: (Annotated ast) => (SrcSpanInfo -> [SrcSpan]) -> DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
-annElem f a = do
-  a' <- lift a
-  let span = ann a'
-  let (SrcSpan fl ln cl _ _) = srcInfoSpan span
-  tell $ AstElemInfo (Just $ SrcLoc fl ln cl) (f span)
-  return a'
+annElem :: (Annotated ast) => (SrcSpanInfo -> [SrcSpan]) -> (SrcSpanInfo -> SrcSpanInfo) -> DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
+annElem pointFn spanFn el = do
+  e <- lift el
+  let
+    span = ann e
+    (SrcSpan fl ln cl _ _) = srcInfoSpan span
+
+  tell $ AstElemInfo (Just $ SrcLoc fl ln cl) (pointFn span)
+  return $ amap spanFn e
 
 infoElem :: String -> AstElem String
 infoElem s = stringElem mainPoint s
@@ -2082,11 +2087,13 @@ sepElemIf p s = sepElem $ if p then s else pure ()
 
 annNoInfoElem, annInfoElem, pointsInfoElem :: (Annotated ast) => DocM (ast SrcSpanInfo) -> AstElem (ast SrcSpanInfo)
 
-annNoInfoElem a = annElem noPoints a
+annNoInfoElem a = annElem noPoints id a
 
-annInfoElem a = annElem mainPoint a
+annInfoElem a = annElem mainPoint id a
 
-pointsInfoElem a = annElem allPoints a
+pointsInfoElem a = annElem allPoints id a
+
+takeAllPointsInfoElem a = annElem allPoints (noInfoSpan . srcInfoSpan) a
 
 annStub = undefined
 
