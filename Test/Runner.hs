@@ -142,6 +142,6 @@ testFiles :: [FilePath]
 testFiles = ["WithKeyword.hs"
   ,"Ex1.hs"
   ,"SimpleDeriving.hs"
-  ,"EmptyContext.hs"
+  ,"EmptyContext.hs" -- standart prettyfier generate mach shorter result
   ,"ListComp1.hs"
   ]
