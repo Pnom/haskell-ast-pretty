@@ -145,4 +145,5 @@ testFiles = ["WithKeyword.hs"
   ,"EmptyContext.hs" -- standart prettyfier generate mach shorter result
   ,"ListComp1.hs"
   ,"Hyphen.hs"
+  ,"EmptyAnn.hs"
   ]
