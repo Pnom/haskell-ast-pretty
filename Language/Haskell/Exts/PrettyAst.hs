@@ -77,40 +77,53 @@ instance PrettyAst Module where
     where
       body = pure (\os h i d ->  Module annStub h os i d)
         <*  implicitElem "{"
-        <*> intersperse implSemiColon (annListElem annNoInfoElem os)
+        <*> intersperse semiColon (annListElem annNoInfoElem os)
         <*  implicitElem "}"
-        <*  sepElemIf (not $ null os) myVcat
+        <*  sepElemIf (not $ null os) layoutCat
         <*> traverse (annNoInfoElem . astPretty) mbHead
-        <*  sepElemIf (isJust mbHead) myVcat
+        <*  sepElemIf (isJust mbHead) layoutCat
 
       emptyBody = body <* implicitElem "{" <*> pure [] <* implicitElem ";" <*> pure [] <* implicitElem "}"
 
       vcatBody = body
         <*  implicitElem "{"
-        <*> intersperse implSemiColon (annListElem annNoInfoElem imp)
+        <*> intersperse semiColon (annListElem annNoInfoElem imp)
         <*  implicitElem ";"
-        <*  sepElemIf (not $ null imp) myVcat
-        <*> intersperse implSemiColon (map declFn decls)
-        <*  sepElemIf (not $ null decls) myVcat
+        <*  sepElemIf (not $ null imp) layoutCat
+        <*> intersperse semiColon (map declFn decls)
+        <*  sepElemIf (not $ null decls) layoutCat
         <*  implicitElem "}"
 
       semiColonBody = body
-        <*  nestMode onsideIndent (infoElem "{" <* sepElem myVcat)
+        <*  nestMode onsideIndent (infoElem "{" <* sepElem vcat)
         <*> nestMode onsideIndent (intersperse semiColon $ annListElem annNoInfoElem imp)
-        <*  (if not $ null imp then semiColon else pure "")
+        <*  (if null imp then pure "" else semiColon)
         <*> nestMode onsideIndent (intersperse semiColon $ map declFn decls)
         <*  infoElem "}"
 
       noLayoutBody = body
         <*  infoElem "{"
-        <*  sepElem myVcat
+        <*  sepElem layoutCat
         <*> intersperse semiColon (annListElem annNoInfoElem imp)
         <*  (if not $ null imp then semiColon else pure "")
         <*> intersperse semiColon (annListElem annNoInfoElem decls)
         <*  infoElem "}"
 
-      semiColon = infoElem ";" <* sepElem myVcat
-      implSemiColon = implicitElem ";" <* sepElem myVcat
+      semiColon = do
+        PrettyMode mode _ <- ask
+        case layout mode of
+          PPOffsideRule -> implicitElem ";" <* sepElem vcat
+          PPNoLayout    -> implicitElem ";" <* sepElem hsep
+          PPSemiColon   -> infoElem ";" <* sepElem vcat
+          PPInLine      -> infoElem ";" <* sepElem vcat
+
+      layoutCat = do
+        PrettyMode mode _ <- ask
+        case layout mode of
+          PPOffsideRule -> vcat
+          PPNoLayout    -> hsep
+          PPSemiColon   -> vcat
+          PPInLine      -> vcat
 
       declFn d@(FunBind _ _) = takeAllPointsInfoElem $ astPretty d
       declFn d = annNoInfoElem $ astPretty d

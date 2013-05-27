@@ -139,11 +139,13 @@ examplesDir :: FilePath
 examplesDir = "Test" </> "examples"
 
 testFiles :: [FilePath]
-testFiles = ["WithKeyword.hs"
+testFiles = [
+   "WithKeyword.hs"
   ,"Ex1.hs"
   ,"SimpleDeriving.hs"
   ,"EmptyContext.hs" -- standart prettyfier generate mach shorter result
   ,"ListComp1.hs"
   ,"Hyphen.hs"
   ,"EmptyAnn.hs"
+  ,"EmptyList.hs"
   ]
