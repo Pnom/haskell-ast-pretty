@@ -148,4 +148,5 @@ testFiles = [
   ,"Hyphen.hs"
   ,"EmptyAnn.hs"
   ,"EmptyList.hs"
+  ,"ImportSymbol.hs"
   ]
