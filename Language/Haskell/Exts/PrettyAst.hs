@@ -125,8 +125,11 @@ instance PrettyAst Module where
           PPSemiColon   -> vcat
           PPInLine      -> vcat
 
-      declFn d@(FunBind _ _) = takeAllPointsInfoElem $ astPretty d
+      declFn d@(FunBind _ _) = annElem takeSemiColon leftNoSemiColon $ astPretty d
       declFn d = annNoInfoElem $ astPretty d
+      takeSemiColon (SrcSpanInfo s ps)   = filter (\ s -> 1 == snd (spanSize s)) ps
+      leftNoSemiColon (SrcSpanInfo s ps) = SrcSpanInfo s $ filter (\ s -> 1 < snd (spanSize s))  ps
+
 
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -367,7 +370,7 @@ instance PrettyAst Decl where
       <*> (annNoInfoElem $ astPretty t)
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
-      <*> intersperse (sep  <* sepElem myVcat) (annListElem annNoInfoElem ms)
+      <*> intersperse (sep  <* sepElem myVcat) (annListElem pointsInfoElem ms)
       <*  (if not $ null ms then sep else pure "")
     where
       sep = do
@@ -2257,7 +2260,7 @@ ppBody f dl =  do
       PPOffsideRule ->
            sepElem vcat
         *> implicitElem "{ - just begin of body"
-        *> intersperse (noInfoElem ";" <* sepElem vcat) dl
+        *> intersperse (implicitElem ";" <* sepElem vcat) dl
         <* implicitElem "}"
       PPSemiColon   ->
            sepElem vcat

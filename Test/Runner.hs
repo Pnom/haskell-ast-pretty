@@ -149,4 +149,5 @@ testFiles = [
   ,"EmptyAnn.hs"
   ,"EmptyList.hs"
   ,"ImportSymbol.hs"
+  ,"IndentedWhere.hs" -- standart pretyfier generate diferent indent at BDecls
   ]
