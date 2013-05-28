@@ -614,7 +614,7 @@ instance PrettyAst Match where
         <*  sepElemIf (not $ null ps) myFsep
 
 ppWhere :: Maybe (Binds a) -> AstElem (Maybe (Binds SrcSpanInfo))
-ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> sepElem hsep *> impl x) mWhere
+ppWhere mWhere = traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> infoElem "where" *> impl x) mWhere
   where
     impl (BDecls  _ []) = annNoInfoElem.resultPretty $ constrElem BDecls  <*  implicitElem "{" <*> pure [] <* implicitElem "}"
     impl (BDecls  _ l)  = annNoInfoElem.resultPretty $ constrElem BDecls  <*> ppBody whereIndent (annListElem annNoInfoElem l)
@@ -2249,13 +2249,27 @@ blankline x = newLine >> x
         else return ()
 
 ppBody :: (PR.PPHsMode -> Int) -> [AstElem a] -> AstElem [a]
+ppBody _ [] = implicitElem "{" *> pure [] <* implicitElem "}"
 ppBody f dl =  do
   (PrettyMode mode _) <- ask
-  let i = f mode
-  case layout mode of
-    PPOffsideRule -> implicitElem "{ - just begin of body" *> nest i (intersperse (noInfoElem ";" <* sepElem vcat) dl <* implicitElem "}")
-    PPSemiColon   -> infoElem "{" *> nest i (sepElem hsep *> intersperse (infoElem ";" <* sepElem vcat) dl <* sepElem hsep <* infoElem "}")
-    _ -> infoElem "{" *> sepElem hsep *> intersperse (infoElem ";" <* sepElem hsep) dl <* sepElem hsep <* infoElem "}"
+  nest (f mode) $
+    case layout mode of
+      PPOffsideRule ->
+           sepElem vcat
+        *> implicitElem "{ - just begin of body"
+        *> intersperse (noInfoElem ";" <* sepElem vcat) dl
+        <* implicitElem "}"
+      PPSemiColon   ->
+           sepElem vcat
+        *> infoElem "{"
+        *> sepElem hsep
+        *> intersperse (infoElem ";" <* sepElem vcat) dl
+        <* infoElem "}"
+      _ -> sepElem hsep
+        *> infoElem "{"
+        *> sepElem hsep
+        *> intersperse (infoElem ";" <* sepElem hsep) dl
+        <* infoElem "}"
 
 -- --------------------------------------------------------------------------
 -- simplify utils
