@@ -155,4 +155,5 @@ testFiles = [
   ,"LanguagePragma.hs"
   ,"ParenFunBind.hs"
   ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout 
+  ,"QualifiedDot.hs"
   ]
