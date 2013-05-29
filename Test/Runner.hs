@@ -92,8 +92,7 @@ reportPrettifying l filePath = do
   let
     fileName = takeFileName filePath
     (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
-    standartPrettyStr  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
-    ParseOk standartPretty = parseFileContents standartPrettyStr
+    standartPretty  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
 
   putStrLn "raw result of ast prettifying"
   putStrLn . show $ fmap SrcSpanInfo' prettyRes
@@ -104,7 +103,10 @@ reportPrettifying l filePath = do
   putStrLn ""
 
   putStrLn "result of standart prettifying"
-  putStrLn . show $ fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) standartPretty
+  putStrLn $ case parseFileContents standartPretty of
+    ParseOk a -> show $ fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) a
+    ParseFailed loc error -> show loc ++ " : " ++ error
+
   putStrLn ""
 
   putStrLn "result of ast prettifying"
@@ -119,7 +121,7 @@ reportPrettifying l filePath = do
   putStrLn $ exactPrint parsingRes []
   putStrLn "----------------------------------------"
   putStrLn "prettyPrintWithMode parsingRes:"
-  putStrLn standartPrettyStr
+  putStrLn standartPretty
   putStrLn "----------------------------------------"
   putStrLn "exactPrint prettyRes:"
   putStrLn $ exactPrint prettyRes []
@@ -152,4 +154,5 @@ testFiles = [
   ,"IndentedWhere.hs" -- standart pretyfier generate diferent indent at BDecls
   ,"LanguagePragma.hs"
   ,"ParenFunBind.hs"
+  ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout 
   ]
