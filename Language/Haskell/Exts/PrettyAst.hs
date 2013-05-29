@@ -106,7 +106,7 @@ instance PrettyAst Module where
         <*  sepElem layoutCat
         <*> intersperse semiColon (annListElem annNoInfoElem imp)
         <*  (if not $ null imp then semiColon else pure "")
-        <*> intersperse semiColon (annListElem annNoInfoElem decls)
+        <*> intersperse semiColon (map declFn decls)
         <*  infoElem "}"
 
       semiColon = do
@@ -125,11 +125,25 @@ instance PrettyAst Module where
           PPSemiColon   -> vcat
           PPInLine      -> vcat
 
-      declFn d@(FunBind _ _) = annElem takeSemiColon leftNoSemiColon $ astPretty d
+      declFn d@(FunBind _ _) = prettyFunBind $ astPretty d
       declFn d = annNoInfoElem $ astPretty d
-      takeSemiColon (SrcSpanInfo s ps)   = filter (\ s -> 1 == snd (spanSize s)) ps
-      leftNoSemiColon (SrcSpanInfo s ps) = SrcSpanInfo s $ filter (\ s -> 1 < snd (spanSize s))  ps
 
+      prettyFunBind fb = do
+        (FunBind span ms) <- lift fb
+        if null ms
+          then return $ FunBind span []
+          else do
+            let 
+              startFb@(SrcSpan fl ln cl _ _) = srcInfoSpan . ann $ head ms
+              endFb = srcInfoSpan .ann $ last ms
+              -- read all points from Math
+              matchPs = concatMap (srcInfoPoints.ann) ms
+              fbPs = srcInfoPoints span
+              span' = SrcSpanInfo (mergeSrcSpan startFb endFb) matchPs
+            
+            tell $ AstElemInfo (Just $ SrcLoc fl ln cl) fbPs
+            return $ FunBind span' ms
+      
 
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -370,7 +384,7 @@ instance PrettyAst Decl where
       <*> (annNoInfoElem $ astPretty t)
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
-      <*> intersperse (sep  <* sepElem myVcat) (annListElem pointsInfoElem ms)
+      <*> intersperse (sep  <* sepElem myVcat) (annListElem annNoInfoElem ms)
       <*  (if not $ null ms then sep else pure "")
     where
       sep = do

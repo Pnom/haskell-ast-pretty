@@ -151,4 +151,5 @@ testFiles = [
   ,"ImportSymbol.hs"
   ,"IndentedWhere.hs" -- standart pretyfier generate diferent indent at BDecls
   ,"LanguagePragma.hs"
+  ,"ParenFunBind.hs"
   ]
