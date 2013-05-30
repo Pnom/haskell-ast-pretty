@@ -133,17 +133,17 @@ instance PrettyAst Module where
         if null ms
           then return $ FunBind span []
           else do
-            let 
+            let
               startFb@(SrcSpan fl ln cl _ _) = srcInfoSpan . ann $ head ms
               endFb = srcInfoSpan .ann $ last ms
               -- read all points from Math
               matchPs = concatMap (srcInfoPoints.ann) ms
               fbPs = srcInfoPoints span
               span' = SrcSpanInfo (mergeSrcSpan startFb endFb) matchPs
-            
+
             tell $ AstElemInfo (Just $ SrcLoc fl ln cl) fbPs
             return $ FunBind span' ms
-      
+
 
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -277,9 +277,8 @@ instance PrettyAst Decl where
       <*> ppOptKind mkind
       <*  sepElem fsep
       <*  infoElem "where"
-      <*  sepElem myVcat
       <*> ppBody classIndent (annListElem annNoInfoElem gadtDecl)
-      <*> traverse (\x -> sepElem myVcat *> identDeriving x) mDeriving
+      <*> traverse identDeriving mDeriving
       where
         identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
   astPretty (DataFamDecl _ mContext head mKind) =
@@ -326,7 +325,6 @@ instance PrettyAst Decl where
       <*  sepElemIf (isJust mKind) fsep
       <*> ppOptKind mKind
       <*  infoElem "where"
-      <*  sepElem myVcat
       <*> ppBody classIndent (annListElem annNoInfoElem gadtDecl)
       <*> traverse (\x -> (nestMode onsideIndent) $sepElem myVcat *> ppDeriving x) mDeriving
   astPretty (ClassDecl _ mContext head funDep mClassDecl) =
@@ -337,10 +335,10 @@ instance PrettyAst Decl where
       <*> ppFsepDhead head
       <*  sepElem fsep
       <*> ppFunDeps funDep
-      <*  (if null $ fromMaybe [] mClassDecl then infoElem "" else sepElem fsep *> infoElem "where" <* sepElem myVcat)
+      <*  (if null $ fromMaybe [] mClassDecl then infoElem "" else sepElem fsep *> infoElem "where")
       <*> traverse cDecl mClassDecl
     where
-     cDecl cd = ppBody classIndent (annListElem annNoInfoElem cd)
+      cDecl cd = ppBody classIndent (annListElem annNoInfoElem cd)
   astPretty (InstDecl _ mContext instHead mInstDecl) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem InstDecl
       <*  infoElem "instance"
@@ -349,7 +347,7 @@ instance PrettyAst Decl where
       <*> ppInstHeadInDecl instHead
       <*> traverse instDecl mInstDecl
     where
-      instDecl is = sepElem fsep *> infoElem "where" *> sepElem vcat *> ppBody classIndent (annListElem annNoInfoElem is)
+      instDecl is = sepElem fsep *> infoElem "where" *> ppBody classIndent (annListElem annNoInfoElem is)
   astPretty (DerivDecl _ mContext instHead) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem DerivDecl
       -- mySep
@@ -531,7 +529,7 @@ ppFsepDhead dh = annNoInfoElem.resultPretty $ constrElem DHead
 
 ppInstHeadInDecl :: InstHead a -> AstElem (InstHead SrcSpanInfo)
 ppInstHeadInDecl ih = annNoInfoElem.resultPretty $ constrElem IHead
-  <*> annInfoElem (astPretty qn)
+  <*> annNoInfoElem (astPretty qn)
   <*  sepElemIf (not $ null ts) fsep
   <*> intersperse (sepElem fsep) (map (annNoInfoElem.ppAType) ts)
   where
@@ -695,7 +693,6 @@ instance PrettyAst InstDecl where
         constrList' es = sequenceA es
   astPretty (InsGData _ don ntype mkind gadtList derives) =
     resultPretty.(nestMode onsideIndent) $ onsideHead (constrElem InsGData)
-      <*  sepElem myVcat
       <*> ppBody classIndent (annListElem annNoInfoElem gadtList)
       <*> traverse (\x -> sepElem myVcat *> ppDeriving x) derives
     where
@@ -1152,17 +1149,14 @@ instance PrettyAst Exp where
           <*  sepElem myFsep
           <*  infoElem "of"
         )
-        <*  sepElem myVcat
         <*> ppBody caseIndent (annListElem annNoInfoElem altList)
   astPrettyPrec p (Do _ stmtList) =
     resultPretty.parensIf (p > 1) $ constrElem Do
       <*  infoElem "do"
-      <*  sepElem myVcat
       <*> ppBody doIndent (annListElem annNoInfoElem stmtList)
   astPrettyPrec p (MDo _ stmtList) =
     resultPretty.parensIf (p > 1) $ constrElem MDo
       <*  infoElem "mdo"
-      <*  sepElem myVcat
       <*> ppBody doIndent (annListElem annNoInfoElem stmtList)
   -- Constructors & Vars
   astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (pointsInfoElem $ astPretty name)
@@ -1747,10 +1741,9 @@ instance PrettyAst Stmt where
   astPretty (RecStmt _ stmtList) =
     resultPretty $ constrElem RecStmt
       <*  infoElem "rec"
-      <*  sepElem myVcat
       <*> ppBody letIndent (annListElem annNoInfoElem stmtList)
 
-ppLetStmt f ls = f <* infoElem "let" <* sepElem myVcat <*> ppBody letIndent (annListElem annInfoElem ls)
+ppLetStmt f ls = f <* infoElem "let" <*> ppBody letIndent (annListElem annInfoElem ls)
 
 -- --------------------------------------------------------------------------
 

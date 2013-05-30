@@ -154,6 +154,10 @@ testFiles = [
   ,"IndentedWhere.hs" -- standart pretyfier generate diferent indent at BDecls
   ,"LanguagePragma.hs"
   ,"ParenFunBind.hs"
-  ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout 
+  ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout
   ,"QualifiedDot.hs"
-  ,"TupleSections.hs"]
+  ,"TupleSections.hs"
+  ,"EmptyInstance.hs" -- is it correct for layout PPNoLayout?
+  ]
+
+
