@@ -111,11 +111,12 @@ instance PrettyAst Module where
 
       semiColon = do
         PrettyMode mode _ <- ask
+        let sep = if isNothing mbHead then implicitElem else infoElem
         case layout mode of
           PPOffsideRule -> implicitElem ";" <* sepElem vcat
-          PPNoLayout    -> implicitElem ";" <* sepElem hsep
-          PPSemiColon   -> infoElem ";" <* sepElem vcat
-          PPInLine      -> infoElem ";" <* sepElem vcat
+          PPNoLayout    -> sep ";" <* sepElem hsep
+          PPSemiColon   -> sep ";" <* sepElem vcat
+          PPInLine      -> sep ";" <* sepElem vcat
 
       layoutCat = do
         PrettyMode mode _ <- ask

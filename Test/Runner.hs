@@ -158,6 +158,6 @@ testFiles = [
   ,"QualifiedDot.hs"
   ,"TupleSections.hs"
   ,"EmptyInstance.hs" -- is it correct for layout PPNoLayout?
-  ,"SCCPragmas.hs"]
-
-
+  ,"SCCPragmas.hs"
+  ,"SingleClassAsst.hs"
+  ]
