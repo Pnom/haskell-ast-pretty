@@ -157,7 +157,7 @@ testFiles = [
   ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout
   ,"QualifiedDot.hs"
   ,"TupleSections.hs"
-  ,"EmptyInstance.hs" -- is it correct for layout PPNoLayout?
+  ,"EmptyInstance.hs" -- is it correct for layouts PPInLine and PPNoLayout?
   ,"SCCPragmas.hs"
   ,"SingleClassAsst.hs"
   ]
