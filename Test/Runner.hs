@@ -160,7 +160,7 @@ testFiles = [
   ,"EmptyInstance.hs" -- is it correct for layouts PPInLine and PPNoLayout?
   ,"SCCPragmas.hs"
   ,"SingleClassAsst.hs"
---  ,"UnindentedPragmaClose.hs"
+  ,"UnindentedPragmaClose.hs" -- is it correct for layouts PPInLine and PPNoLayout?
 --  ,"Testing.hs"
 --  ,"Bug.hs"
 --  ,"NestedAsPat.hs"
