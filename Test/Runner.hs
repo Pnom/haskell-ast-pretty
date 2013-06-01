@@ -161,7 +161,7 @@ testFiles = [
   ,"SCCPragmas.hs"
   ,"SingleClassAsst.hs"
   ,"UnindentedPragmaClose.hs" -- is it correct for layouts PPInLine and PPNoLayout?
---  ,"Testing.hs"
+  ,"Testing.hs"
 --  ,"Bug.hs"
 --  ,"NestedAsPat.hs"
 --  ,"WhereBlock.hs"
