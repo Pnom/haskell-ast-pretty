@@ -163,7 +163,7 @@ testFiles = [
   ,"UnindentedPragmaClose.hs" -- is it correct for layouts PPInLine and PPNoLayout?
   ,"Testing.hs"
   ,"Bug.hs"
---  ,"NestedAsPat.hs"
+  ,"NestedAsPat.hs" -- pretty PApp has different SrcSpanInfo then standart (PPOffsideRule layout)
 --  ,"WhereBlock.hs"
 --  ,"HexPrec.hs"
 --  ,"Rank2Types.hs"
