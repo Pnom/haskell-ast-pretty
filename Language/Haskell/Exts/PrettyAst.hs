@@ -1000,7 +1000,11 @@ instance PrettyAst TyVarBind where
 
 ppForall :: [AstElem a] -> AstElem [a]
 ppForall [] = pure []
-ppForall vs = (nestMode onsideIndent) $ infoElem "forall" *> sepElem myFsep *> intersperse (sepElem myFsep) vs <* infoElem "."
+ppForall vs = (nestMode onsideIndent) $ infoElem "forall"
+  *> sepElem myFsep
+  *> intersperse (sepElem myFsep) vs
+  <* sepElem myFsep
+  <* infoElem "."
 
 ---------------------------- Kinds ----------------------------
 

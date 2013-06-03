@@ -166,7 +166,7 @@ testFiles = [
   ,"NestedAsPat.hs" -- pretty PApp has different SrcSpanInfo then standart (PPOffsideRule layout)
 --  ,"WhereBlock.hs" --  pretty BDecls has different SrcSpanInfo then standart
   ,"HexPrec.hs" -- double semi colon at pretty result
---  ,"Rank2Types.hs"
+  ,"Rank2Types.hs" -- is it correct? (PPInLine layout)
 --  ,"ReadP.hs"
 --  ,"LineOptionsPragma.hs"
 --  ,"DataHeadParen.hs"
