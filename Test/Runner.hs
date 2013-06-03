@@ -10,7 +10,7 @@ import Data.Traversable (traverse)
 
 -- todo
 -- update cabal file
--- let user chose layout for tests
+-- add test: Call ast pretty -> exactPrint -> parseFileContents.
 
 main :: IO ()
 main = runTests =<< getArgs
