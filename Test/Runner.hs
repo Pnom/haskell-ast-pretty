@@ -164,7 +164,7 @@ testFiles = [
   ,"Testing.hs"
   ,"Bug.hs"
   ,"NestedAsPat.hs" -- pretty PApp has different SrcSpanInfo then standart (PPOffsideRule layout)
---  ,"WhereBlock.hs"
+--  ,"WhereBlock.hs" --  pretty BDecls has different SrcSpanInfo then standart
   ,"HexPrec.hs" -- double semi colon at pretty result
 --  ,"Rank2Types.hs"
 --  ,"ReadP.hs"
