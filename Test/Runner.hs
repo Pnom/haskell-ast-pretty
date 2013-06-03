@@ -167,7 +167,8 @@ testFiles = [
 --  ,"WhereBlock.hs" --  pretty BDecls has different SrcSpanInfo then standart
   ,"HexPrec.hs" -- double semi colon at pretty result
   ,"Rank2Types.hs" -- is it correct? (PPInLine layout)
---  ,"ReadP.hs"
+  ,"ReadP.hs" --  pretty DHead has different SrcSpanInfo then standart. 
+              --  What about pretty result for layout PPInLine?
 --  ,"LineOptionsPragma.hs"
 --  ,"DataHeadParen.hs"
 --  ,"RecordInfixSelector.hs"
