@@ -522,7 +522,7 @@ ppConstrList cs = infoElem "=" *> sepElem hsep
 
 ppFsepDhead :: DeclHead a -> AstElem (DeclHead SrcSpanInfo)
 ppFsepDhead dh = annNoInfoElem.resultPretty $ constrElem DHead
-  <*> annNoInfoElem (astPretty name)
+  <*> pointsInfoElem (astPretty name)
   <*  sepElemIf (not $ null tvs) fsep
   <*> intersperse (sepElem fsep) (annListElem annNoInfoElem tvs)
   where
@@ -554,7 +554,7 @@ instance PrettyAst DeclHead where
   astPretty (DHead _ n tvs) =
     -- mySep
     resultPretty.(nestMode onsideIndent) $ constrElem DHead
-      <*> (annInfoElem $ astPretty n)
+      <*> pointsInfoElem (astPretty n)
       <*  sepElem fsep
       <*> intersperse (sepElem fsep) (annListElem annNoInfoElem tvs)
   astPretty (DHInfix _ tva n tvb) =

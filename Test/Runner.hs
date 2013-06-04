@@ -170,7 +170,7 @@ testFiles = [
   ,"ReadP.hs" --  pretty DHead has different SrcSpanInfo then standart. 
               --  What about pretty result for layout PPInLine?
 --  ,"LineOptionsPragma.hs"
---  ,"DataHeadParen.hs"
+  ,"DataHeadParen.hs"
 --  ,"RecordInfixSelector.hs"
 --  ,"GadtDeriving.hs"
 --  ,"LinePragma.hs"
