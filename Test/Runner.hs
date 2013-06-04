@@ -171,7 +171,7 @@ testFiles = [
               --  What about pretty result for layout PPInLine?
 --  ,"LineOptionsPragma.hs"
   ,"DataHeadParen.hs"
---  ,"RecordInfixSelector.hs"
+  ,"RecordInfixSelector.hs" -- is it correct? layout PPInLine
 --  ,"GadtDeriving.hs"
 --  ,"LinePragma.hs"
 --  ,"Pragma.hs"

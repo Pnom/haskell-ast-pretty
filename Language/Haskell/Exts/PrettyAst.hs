@@ -847,7 +847,11 @@ instance PrettyAst ConDecl where
     resultPretty $ constrElem RecDecl
       <*> annNoInfoElem (astPretty name)
       <*  sepElem hsep
-      <*> braceList (annListElem annNoInfoElem fieldList)
+      <*  infoElem "{"
+      <*  sepElemIf (not $ null fieldList) hsep
+      <*> intersperse parenListSep (annListElem annNoInfoElem fieldList)
+      <*  sepElemIf (not $ null fieldList) hsep
+      <*  infoElem "}"
   astPretty (ConDecl _ name typeList) =
     resultPretty.(nestMode onsideIndent) $ constrElem ConDecl
     -- mySep
@@ -1192,7 +1196,12 @@ instance PrettyAst Exp where
       <*  sepElem hsep
       <*> (annInfoElem $ astPretty e)
   astPrettyPrec _ (RecConstr _ c fieldList) = resultPretty $ constrElem RecConstr
-    <*> annNoInfoElem (astPretty c) <*> braceList (annListElem annNoInfoElem fieldList)
+    <*> annNoInfoElem (astPretty c)
+    <*  infoElem "{"
+    <*  sepElemIf (not $ null fieldList) hsep
+    <*> intersperse parenListSep (annListElem annNoInfoElem fieldList)
+    <*  sepElemIf (not $ null fieldList) hsep
+    <*  infoElem "}"
   astPrettyPrec _ (RecUpdate _ e fieldList) = resultPretty $ constrElem RecUpdate
     <*> (annInfoElem $ astPretty e) <*> braceList (annListElem annNoInfoElem fieldList)
   -- Lists
