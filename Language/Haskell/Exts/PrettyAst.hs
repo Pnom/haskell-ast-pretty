@@ -992,13 +992,15 @@ instance PrettyAst Type where
 
 instance PrettyAst TyVarBind where
   astPretty (KindedVar _ var kind) =
-    resultPretty.parens.(nestMode onsideIndent) $ constrElem KindedVar
+    resultPretty.(nestMode onsideIndent) $ constrElem KindedVar
       -- myFsep
+      <*  infoElem "("
       <*> annNoInfoElem (astPretty var)
       <*  sepElem myFsep
       <*  infoElem "::"
       <*  sepElem myFsep
       <*> annNoInfoElem (astPretty kind)
+      <*  infoElem ")"
   astPretty (UnkindedVar _ var) = resultPretty $ constrElem UnkindedVar <*> annNoInfoElem (astPretty var)
 
 ppForall :: [AstElem a] -> AstElem [a]

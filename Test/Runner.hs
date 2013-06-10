@@ -150,7 +150,7 @@ instance Show PPHsMode where
     ", linePragmas = " ++ show (linePragmas m)
 
 examplesDir :: FilePath
-examplesDir = "Test" </> "examples"
+examplesDir = "examples"
 
 testFiles :: [FilePath]
 testFiles = [
@@ -179,7 +179,7 @@ testFiles = [
 --  ,"WhereBlock.hs" --  pretty BDecls has different SrcSpanInfo then standart
   ,"HexPrec.hs" -- double semi colon at pretty result
   ,"Rank2Types.hs" -- is it correct? (PPInLine layout)
-  ,"ReadP.hs" --  pretty DHead has different SrcSpanInfo then standart. 
+  ,"ReadP.hs" --  pretty DHead has different SrcSpanInfo then standart.
               --  What about pretty result for layout PPInLine?
 --  ,"LineOptionsPragma.hs"
   ,"DataHeadParen.hs"
@@ -187,7 +187,7 @@ testFiles = [
   ,"GadtDeriving.hs" -- layout PPSemiColon, PPInLine, PPNoLayout?
   ,"LinePragma.hs"
   ,"Pragma.hs" -- missing semi colon after "here". layouts PPInLine,  PPNoLayout?
---  ,"FamilyKindSig.hs"
+  ,"FamilyKindSig.hs" -- layout PPInLine?
 --  ,"Hyphen_.hs"
 --  ,"GhcDeriving.hs"
 --  ,"PackageImport.hs"
