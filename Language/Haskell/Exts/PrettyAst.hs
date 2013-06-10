@@ -341,7 +341,7 @@ instance PrettyAst Decl where
     where
       cDecl cd = ppBody classIndent (annListElem annNoInfoElem cd)
   astPretty (InstDecl _ mContext instHead mInstDecl) =
-    blankline.resultPretty.(nestMode onsideIndent) $ constrElem InstDecl
+    blankline.resultPretty $ constrElem InstDecl
       <*  infoElem "instance"
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext
@@ -459,6 +459,7 @@ instance PrettyAst Decl where
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mActivation
       <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty qName)
+      <*  sepElem hsep
       <*  infoElem "#-}"
   astPretty (InlineConlikeSig _ mActivation qName) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem InlineConlikeSig
@@ -2285,7 +2286,7 @@ ppBody f dl =  do
            sepElem vcat
         *> infoElem "{"
         *> sepElem hsep
-        *> intersperse (infoElem ";" <* sepElem vcat) dl
+        *> nestMode onsideIndent (intersperse (infoElem ";" <* sepElem vcat) dl)
         <* infoElem "}"
       _ -> sepElem hsep
         *> infoElem "{"

@@ -186,7 +186,7 @@ testFiles = [
   ,"RecordInfixSelector.hs" -- is it correct? layout PPInLine
   ,"GadtDeriving.hs" -- layout PPSemiColon, PPInLine, PPNoLayout?
   ,"LinePragma.hs"
---  ,"Pragma.hs"
+  ,"Pragma.hs" -- missing semi colon after "here". layouts PPInLine,  PPNoLayout?
 --  ,"FamilyKindSig.hs"
 --  ,"Hyphen_.hs"
 --  ,"GhcDeriving.hs"
