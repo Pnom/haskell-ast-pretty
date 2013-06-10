@@ -188,7 +188,7 @@ testFiles = [
   ,"LinePragma.hs"
   ,"Pragma.hs" -- missing semi colon after "here". layouts PPInLine,  PPNoLayout?
   ,"FamilyKindSig.hs" -- layout PPInLine?
---  ,"GhcDeriving.hs"
+  ,"GhcDeriving.hs"  -- is it wrong indent for deriving?
 --  ,"PackageImport.hs"
 --  ,"GroupKeyword.hs"
 --  ,"RecordWildcards.hs"
