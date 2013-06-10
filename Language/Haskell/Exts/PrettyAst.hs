@@ -268,7 +268,7 @@ instance PrettyAst Decl where
       <*> ppConstrList constrList
       <*> traverse (\x -> (nestMode onsideIndent) $ sepElem myVcat *> ppDeriving x) mDeriving
   astPretty (GDataDecl _ don mContext hd mkind gadtDecl mDeriving) =
-    blankline.resultPretty.(nestMode onsideIndent) $ constrElem GDataDecl
+    blankline.resultPretty $ constrElem GDataDecl
       -- mySep
       <*> (annNoInfoElem $ astPretty don)
       <*  sepElem fsep
@@ -281,7 +281,7 @@ instance PrettyAst Decl where
       <*> ppBody classIndent (annListElem annNoInfoElem gadtDecl)
       <*> traverse identDeriving mDeriving
       where
-        identDeriving d = ppBody letIndent [ppDeriving d] >>= return.head
+        identDeriving d = (nestMode letIndent) $ sepElem myVcat *> ppDeriving d
   astPretty (DataFamDecl _ mContext head mKind) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem DataFamDecl
       -- mySep
@@ -906,16 +906,14 @@ instance PrettyAst Deriving where
     [ih@(IHead _ d [])] -> resultPretty $ dheads <*> ilist
     _ -> resultPretty $ dheads
       <*  infoElem "("
-      <*  sepElem hsep
       <*> ilist
-      <*  sepElem hsep
       <*  infoElem ")"
     where
       dheads = constrElem Deriving <* infoElem "deriving" <* sepElem hsep
       ilist = intersperse parenListSep (annListElem annNoInfoElem ihs)
 
 ppDeriving :: Deriving a -> AstElem (Deriving SrcSpanInfo)
-ppDeriving d = annNoInfoElem $ astPretty d
+ppDeriving d = annNoInfoElem (astPretty d)
 
 ------------------------- Types -------------------------
 

@@ -184,7 +184,7 @@ testFiles = [
 --  ,"LineOptionsPragma.hs"
   ,"DataHeadParen.hs"
   ,"RecordInfixSelector.hs" -- is it correct? layout PPInLine
---  ,"GadtDeriving.hs"
+  ,"GadtDeriving.hs" -- layout PPSemiColon, PPInLine, PPNoLayout?
 --  ,"LinePragma.hs"
 --  ,"Pragma.hs"
 --  ,"FamilyKindSig.hs"
