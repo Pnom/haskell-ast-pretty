@@ -137,6 +137,18 @@ instance Show PPLayout where
   show PPInLine      = "PPInLine"
   show PPNoLayout    = "PPNoLayout"
 
+instance Show PPHsMode where
+  show m = "PPHsMode {classIndent = " ++ show (classIndent m) ++
+    ", doIndent = " ++ show (doIndent m) ++
+    ", caseIndent = " ++ show (caseIndent m) ++
+    ", letIndent = " ++ show (letIndent m) ++
+    ", whereIndent = " ++ show (whereIndent m) ++
+    ", onsideIndent = " ++ show (onsideIndent m) ++
+    ", spacing = " ++ show (spacing m) ++
+    ", layout = " ++ show (layout m) ++
+    ", doIndent = " ++ show (doIndent m) ++
+    ", linePragmas = " ++ show (linePragmas m)
+
 examplesDir :: FilePath
 examplesDir = "Test" </> "examples"
 
