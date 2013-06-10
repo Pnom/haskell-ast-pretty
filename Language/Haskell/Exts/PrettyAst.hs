@@ -259,7 +259,7 @@ instance PrettyAst Decl where
       <*  sepElemIf (isJust mkind) fsep
       <*> ppOptKind mkind
   astPretty (DataDecl _ don mContext head constrList mDeriving) =
-    blankline.resultPretty.(nestMode onsideIndent) $ constrElem DataDecl
+    blankline.resultPretty $ constrElem DataDecl
       <*> (annNoInfoElem $ astPretty don)
       <*  sepElem fsep
       <*> traverse (\ c -> (annNoInfoElem $ astPretty c) <* sepElem fsep) mContext

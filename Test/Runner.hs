@@ -150,13 +150,13 @@ instance Show PPHsMode where
     ", linePragmas = " ++ show (linePragmas m)
 
 examplesDir :: FilePath
-examplesDir = "examples"
+examplesDir = "Test" </> "examples"
 
 testFiles :: [FilePath]
 testFiles = [
    "WithKeyword.hs"
   ,"Ex1.hs"
-  ,"SimpleDeriving.hs"
+  ,"SimpleDeriving.hs" -- is it wrong indent for deriving?
   ,"EmptyContext.hs" -- standart prettyfier generate mach shorter result
   ,"ListComp1.hs"
   ,"Hyphen.hs"
@@ -188,7 +188,6 @@ testFiles = [
   ,"LinePragma.hs"
   ,"Pragma.hs" -- missing semi colon after "here". layouts PPInLine,  PPNoLayout?
   ,"FamilyKindSig.hs" -- layout PPInLine?
---  ,"Hyphen_.hs"
 --  ,"GhcDeriving.hs"
 --  ,"PackageImport.hs"
 --  ,"GroupKeyword.hs"
