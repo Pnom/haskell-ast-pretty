@@ -209,7 +209,7 @@ instance PrettyAst ImportDecl where
       <*  sepElem fsep
       <*> (if src then pure src <* infoElem "{-# SOURCE #-}" <* sepElem fsep else pure src)
       <*> (if qual then pure qual <* infoElem "qualified" <* sepElem fsep else pure qual)
-      <*> traverse (\x -> infoElem x <* sepElem fsep) mbPkg
+      <*> traverse (\x -> quotedInfoElem x <* sepElem fsep) mbPkg
       <*> (annNoInfoElem $ astPretty mod)
       <*> traverse (\ x -> sepElem fsep *> infoElem "as" *> sepElem hsep *> (annNoInfoElem $ astPretty x)) mbName
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbSpecs
@@ -2086,11 +2086,18 @@ spanFromString s = do
   ep <- getPos
   return $ mkSrcSpan sp ep
 
-stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
-stringElem f s = do
+spanFromQuotedString :: String -> DocM SrcSpan
+spanFromQuotedString s = do
+  sp <- getPos
+  _  <- format $ "'" ++ s ++ "'"
+  ep <- getPos
+  return $ mkSrcSpan sp ep
+
+stringElem ::(SrcSpanInfo -> [SrcSpan]) -> (String -> DocM SrcSpan) -> String ->  AstElem String
+stringElem fPoints fSpan s = do
   start <- getPos
-  span  <- lift $ spanFromString s
-  tell $ AstElemInfo (Just start) (f $ SrcSpanInfo span [span])
+  span  <- lift $ fSpan s
+  tell $ AstElemInfo (Just start) (fPoints $ SrcSpanInfo span [span])
   return s
 
 noPoints, mainPoint, allPoints :: SrcSpanInfo -> [SrcSpan]
@@ -2108,14 +2115,17 @@ annElem pointFn spanFn el = do
   tell $ AstElemInfo (Just $ SrcLoc fl ln cl) (pointFn span)
   return $ amap spanFn e
 
+quotedInfoElem :: String -> AstElem String
+quotedInfoElem s = stringElem mainPoint spanFromQuotedString s
+
 infoElem :: String -> AstElem String
-infoElem s = stringElem mainPoint s
+infoElem s = stringElem mainPoint spanFromString s
 
 noInfoElem :: String -> AstElem String
-noInfoElem s = stringElem noPoints s
+noInfoElem s = stringElem noPoints spanFromString s
 
 implicitElem :: String -> AstElem String
-implicitElem s = stringElem mainPoint "" >> return s
+implicitElem s = stringElem mainPoint spanFromString "" >> return s
 
 sepElem :: DocM() -> AstElem ()
 sepElem s = lift s
