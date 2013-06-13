@@ -23,6 +23,7 @@ import Control.Applicative
 import Data.Maybe
 import Data.List hiding (intersperse)
 import Data.Traversable
+import Data.Char (isSpace)
 
 data DocState = DocState {
   pos :: !SrcLoc,
@@ -209,7 +210,7 @@ instance PrettyAst ImportDecl where
       <*  sepElem fsep
       <*> (if src then pure src <* infoElem "{-# SOURCE #-}" <* sepElem fsep else pure src)
       <*> (if qual then pure qual <* infoElem "qualified" <* sepElem fsep else pure qual)
-      <*> traverse (\x -> quotedInfoElem x <* sepElem fsep) mbPkg
+      <*> traverse (\x -> infoElem (" " ++ x ++ " ") <* sepElem fsep) mbPkg -- " " ++ x ++ " " we jast add two symbols to SrcSpanInfo for quotes
       <*> (annNoInfoElem $ astPretty mod)
       <*> traverse (\ x -> sepElem fsep *> infoElem "as" *> sepElem hsep *> (annNoInfoElem $ astPretty x)) mbName
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbSpecs
@@ -2093,12 +2094,16 @@ spanFromQuotedString s = do
   ep <- getPos
   return $ mkSrcSpan sp ep
 
-stringElem ::(SrcSpanInfo -> [SrcSpan]) -> (String -> DocM SrcSpan) -> String ->  AstElem String
-stringElem fPoints fSpan s = do
+stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
+stringElem fPoints s = do
   start <- getPos
-  span  <- lift $ fSpan s
+  span  <- lift $ spanFromString s
   tell $ AstElemInfo (Just start) (fPoints $ SrcSpanInfo span [span])
-  return s
+  let
+    lstrip = dropWhile isSpace
+    rstrip = reverse . lstrip . reverse
+    strip = lstrip . rstrip
+  return $ strip s
 
 noPoints, mainPoint, allPoints :: SrcSpanInfo -> [SrcSpan]
 noPoints  _ = []
@@ -2116,16 +2121,16 @@ annElem pointFn spanFn el = do
   return $ amap spanFn e
 
 quotedInfoElem :: String -> AstElem String
-quotedInfoElem s = stringElem mainPoint spanFromQuotedString s
+quotedInfoElem s = stringElem mainPoint s
 
 infoElem :: String -> AstElem String
-infoElem s = stringElem mainPoint spanFromString s
+infoElem s = stringElem mainPoint s
 
 noInfoElem :: String -> AstElem String
-noInfoElem s = stringElem noPoints spanFromString s
+noInfoElem s = stringElem noPoints s
 
 implicitElem :: String -> AstElem String
-implicitElem s = stringElem mainPoint spanFromString "" >> return s
+implicitElem s = stringElem mainPoint "" >> return s
 
 sepElem :: DocM() -> AstElem ()
 sepElem s = lift s

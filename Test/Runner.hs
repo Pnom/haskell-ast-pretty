@@ -189,8 +189,8 @@ testFiles = [
   ,"Pragma.hs" -- missing semi colon after "here". layouts PPInLine,  PPNoLayout?
   ,"FamilyKindSig.hs" -- layout PPInLine?
   ,"GhcDeriving.hs"  -- is it wrong indent for deriving?
-  ,"PackageImport.hs" -- parser give us error for result of prettifying with layout PPNoLayout. layout PPInLine?
---  ,"GroupKeyword.hs"
+  ,"PackageImport.hs" -- layout  PPInLine? parser produce an error on the standart prettyfier result with layout PPNoLayout
+  ,"GroupKeyword.hs"
 --  ,"RecordWildcards.hs"
 --  ,"TypeOperatorsTest.hs"
 --  ,"MultiCtxt.hs"
