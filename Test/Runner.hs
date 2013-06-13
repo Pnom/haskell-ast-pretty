@@ -191,7 +191,7 @@ testFiles = [
   ,"GhcDeriving.hs"  -- is it wrong indent for deriving?
   ,"PackageImport.hs" -- layout  PPInLine? parser produce an error on the standart prettyfier result with layout PPNoLayout
   ,"GroupKeyword.hs"
---  ,"RecordWildcards.hs"
+  ,"RecordWildcards.hs" -- layout  PPInLine? parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout
 --  ,"TypeOperatorsTest.hs"
 --  ,"MultiCtxt.hs"
 --  ,"FixityTests.hs"
