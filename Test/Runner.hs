@@ -195,7 +195,7 @@ testFiles = [
   ,"TypeOperatorsTest.hs" -- do we need parens? for layout PPNoLayout parser produce an error on the standart prettyfier result
   ,"MultiCtxt.hs" -- do we need parens? for layout PPNoLayout parser produce an error on the standart prettyfier result
 --  ,"FixityTests.hs"
---  ,"TypeFunctions.hs"
+  ,"TypeFunctions.hs" -- layout PPInLine? for layout PPNoLayout parser produce an error on the standart prettyfier result
 --  ,"ArrowLayout.hs"
 --  ,"InfixParser.hs"
 --  ,"QuasiQuoteLines.hs"
