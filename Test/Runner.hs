@@ -150,8 +150,8 @@ instance Show PPHsMode where
     ", linePragmas = " ++ show (linePragmas m)
 
 examplesDir :: FilePath
---examplesDir = "Test" </> "examples"
-examplesDir = "examples"
+examplesDir = "Test" </> "examples"
+
 testFiles :: [FilePath]
 testFiles = [
    "WithKeyword.hs"
@@ -192,7 +192,7 @@ testFiles = [
   ,"PackageImport.hs" -- layout  PPInLine? parser produce an error on the standart prettyfier result with layout PPNoLayout
   ,"GroupKeyword.hs"
   ,"RecordWildcards.hs" -- layout  PPInLine? parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout
---  ,"TypeOperatorsTest.hs"
+  ,"TypeOperatorsTest.hs" -- do we need parens? for layout PPNoLayout parser produce an error on the standart prettyfier result
 --  ,"MultiCtxt.hs"
 --  ,"FixityTests.hs"
 --  ,"TypeFunctions.hs"
