@@ -41,7 +41,76 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-
+Extra-Source-Files:
+    Test/Runner.hs
+    Test/failing.txt
+    Test/printFail.txt
+    Test/examples/ArrowLayout.hs
+    Test/examples/Attributes.hs
+    Test/examples/BangPatterns.hs
+    Test/examples/Bug.hs
+    Test/examples/ByteStringUtils.hs
+    Test/examples/CParser.hs
+    Test/examples/ClassInstType.hs
+    Test/examples/DataHeadParen.hs
+    Test/examples/Directory.hs
+    Test/examples/EmptyAnn.hs
+    Test/examples/EmptyContext.hs
+    Test/examples/EmptyInstance.hs
+    Test/examples/EmptyList.hs
+    Test/examples/Ex1.hs
+    Test/examples/FamilyKindSig.hs
+    Test/examples/FixityTests.hs
+    Test/examples/ForeignImport.hs
+    Test/examples/GadtDeriving.hs
+    Test/examples/GenericTree.hs
+    Test/examples/GhcDeriving.hs
+    Test/examples/GroupKeyword.hs
+    Test/examples/HappyDoAction.hs
+    Test/examples/HaskellParser.hs
+    Test/examples/HexPrec.hs
+    Test/examples/Hyphen.hs
+    Test/examples/ImportSymbol.hs
+    Test/examples/IfThenElseLayout.hs
+    Test/examples/IndentedWhere.hs
+    Test/examples/InfixParser.hs
+    Test/examples/LanguagePragma.hs
+    Test/examples/LineOptionsPragma.hs
+    Test/examples/LinePragma.hs
+    Test/examples/ListComp1.hs
+    Test/examples/MagicHash.hs
+    Test/examples/MultiCtxt.hs
+    Test/examples/NPlusK.hs
+    Test/examples/NestedAsPat.hs
+    Test/examples/PackageImport.hs
+    Test/examples/ParenFunBind.hs
+    Test/examples/Pragma.hs
+    Test/examples/QualifiedDot.hs
+    Test/examples/QuasiQuoteLines.hs
+    Test/examples/Rank2Types.hs
+    Test/examples/ReadP.hs
+    Test/examples/RealGHC.lhs
+    Test/examples/RealHSE.hs
+    Test/examples/RealHoogle.hs
+    Test/examples/RealTagSoup.hs
+    Test/examples/RecordInfixSelector.hs
+    Test/examples/RecordWildcards.hs
+    Test/examples/RelaxedDo.hs
+    Test/examples/SCCPragmas.hs
+    Test/examples/ScopedTypeVariables.hs
+    Test/examples/SimpleDeriving.hs
+    Test/examples/SingleClassAsst.hs
+    Test/examples/SpecializeInstance.hs
+    Test/examples/Testing.hs
+    Test/examples/TupleSections.hs
+    Test/examples/TypeFunctions.hs
+    Test/examples/TypeOperatorsTest.hs
+    Test/examples/Unicode.hs
+    Test/examples/UnicodeSyntax.hs
+    Test/examples/UnindentedPragmaClose.hs
+    Test/examples/WhereBlock.hs
+    Test/examples/WithKeyword.hs
+    
 library
   -- Modules exported by the library.
   exposed-modules:     Language.Haskell.Exts.PrettyAst
@@ -50,8 +119,19 @@ library
   -- other-modules:       
   
   -- Other library packages from which modules are imported.
-  build-depends:       base ==4.6.*, smallcheck ==1.0.*, haskell-src-exts ==1.13.*, mtl ==2.1.*
+  build-depends:       base ==4.6.*, haskell-src-exts ==1.13.*, mtl ==2.1.*
   
   -- Base language which the package is written in.
   default-language:    Haskell2010
   
+test-suite test-haskell-ast-pretty
+  type:       exitcode-stdio-1.0
+  main-is:    Test/Runner.hs
+  build-depends:  
+    -- haskell-ast-pretty dependencies
+    base ==4.6.*, 
+    haskell-src-exts ==1.13.*, 
+    mtl ==2.1.*,
+    -- test-specific dependencies
+    directory ==1.2.0.*,
+    filepath ==1.3.0.*
