@@ -2122,9 +2122,6 @@ annElem pointFn spanFn el = do
   tell $ AstElemInfo (Just $ SrcLoc fl ln cl) (pointFn span)
   return $ amap spanFn e
 
-quotedInfoElem :: String -> AstElem String
-quotedInfoElem s = stringElem mainPoint s
-
 infoElem :: String -> AstElem String
 infoElem s = stringElem mainPoint s
 
