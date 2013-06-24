@@ -2087,7 +2087,6 @@ instance Monoid AstElemInfo where
 
 type AstElem = WriterT AstElemInfo DocM
 
-
 -- --------------------------------------------------------------------------
 -- AstElem utils
 
@@ -2188,6 +2187,33 @@ resultPretty a = do
   end <- getPos
   let span = SrcSpanInfo (mkSrcSpan start end) ps
   return $ amap (const span) a'
+
+implicitCloseSep = do 
+  isEmpty <- lift isEmptyLine
+  if isEmpty
+    then
+      implicitItem
+    else
+      sepElem baseLine *> implicitItem
+  where
+    
+    implicitItem :: AstElem ()
+    implicitItem = do
+      DocState (SrcLoc f l c) n _ <- get
+      tell $ AstElemInfo Nothing [SrcSpan f l c l 0]
+      return ()
+  
+  
+    isEmptyLine = do
+      DocState (SrcLoc f l c) n _ <- get
+      return $ c <= n + 1
+
+    baseLine :: DocM ()
+    baseLine =
+      do
+        DocState (SrcLoc f l c) n _ <- get
+        putPos $! SrcLoc f (l + 1) 1
+        return ()
 
 -- --------------------------------------------------------------------------
 -- separators
@@ -2306,7 +2332,7 @@ ppBody f dl =  do
            sepElem vcat
         *> implicitElem "{ - just begin of body"
         *> intersperse (implicitElem ";" <* sepElem vcat) dl
-        <* implicitElem "}"
+        <* implicitCloseSep
       PPSemiColon   ->
            sepElem vcat
         *> infoElem "{"
