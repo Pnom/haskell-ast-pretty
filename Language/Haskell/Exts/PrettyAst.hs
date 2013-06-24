@@ -78,9 +78,9 @@ instance PrettyAst Module where
     where
       body = pure (\os h i d ->  Module annStub h os i d)
         <*  implicitElem "{"
-        <*> intersperse semiColon (annListElem annNoInfoElem os)
-        <*  implicitElem "}"
+        <*> annNoInfoList os
         <*  sepElemIf (not $ null os) layoutCat
+        <*  implicitElem "}"
         <*> traverse (annNoInfoElem . astPretty) mbHead
         <*  sepElemIf (isJust mbHead) layoutCat
 
@@ -88,33 +88,41 @@ instance PrettyAst Module where
 
       vcatBody = body
         <*  implicitElem "{"
-        <*> intersperse semiColon (annListElem annNoInfoElem imp)
-        <*  implicitElem ";"
-        <*  sepElemIf (not $ null imp) layoutCat
-        <*> intersperse semiColon (map declFn decls)
-        <*  sepElemIf (not $ null decls) layoutCat
+        <*> annNoInfoList imp
+        <*  finalSemiColon (return PPOffsideRule) imp
+        <*> declList decls
+        <*  finalSemiColon (return PPOffsideRule) decls
         <*  implicitElem "}"
 
       semiColonBody = body
         <*  nestMode onsideIndent (infoElem "{" <* sepElem vcat)
-        <*> nestMode onsideIndent (intersperse semiColon $ annListElem annNoInfoElem imp)
-        <*  (if null imp then pure "" else semiColon)
-        <*> nestMode onsideIndent (intersperse semiColon $ map declFn decls)
+        <*> nestMode onsideIndent (annNoInfoList imp)
+        <*  finalSemiColon layoutFromState imp
+        <*> nestMode onsideIndent (declList decls)
+        <*  finalSemiColon layoutFromState decls
         <*  infoElem "}"
 
       noLayoutBody = body
         <*  infoElem "{"
         <*  sepElem layoutCat
-        <*> intersperse semiColon (annListElem annNoInfoElem imp)
-        <*  (if not $ null imp then semiColon else pure "")
-        <*> intersperse semiColon (map declFn decls)
+        <*> annNoInfoList imp
+        <*  finalSemiColon layoutFromState imp
+        <*> declList decls
         <*  infoElem "}"
 
-      semiColon = do
+      annNoInfoList xs = intersperse (layoutFromState >>= semiColon) $ annListElem annNoInfoElem xs
+      declList xs   = intersperse (layoutFromState >>= semiColon) $ map declFn xs
+      finalSemiColon f xs = if null xs then pure "" else f >>= semiColon
+
+      layoutFromState = do
         PrettyMode mode _ <- ask
+        return $ layout mode
+
+      semiColon m = do
+        emptyLine <- lift isEmptyLine
         let sep = if isNothing mbHead then implicitElem else infoElem
-        case layout mode of
-          PPOffsideRule -> implicitElem ";" <* sepElem vcat
+        case m of
+          PPOffsideRule -> sepElemIf (not emptyLine) vcat *> implicitElem ";"
           PPNoLayout    -> sep ";" <* sepElem hsep
           PPSemiColon   -> sep ";" <* sepElem vcat
           PPInLine      -> sep ";" <* sepElem vcat
@@ -145,8 +153,6 @@ instance PrettyAst Module where
 
             tell $ AstElemInfo (Just $ SrcLoc fl ln cl) fbPs
             return $ FunBind span' ms
-
-
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
   astPretty (XmlHybrid _ mbHead os imp decls n attrs mattr cs) = unimplemented
@@ -2046,6 +2052,11 @@ line = do
   putPos $! SrcLoc f (l + 1) (n + 1)
   return ()
 
+isEmptyLine :: DocM Bool
+isEmptyLine = do
+  DocState (SrcLoc f l c) n _ <- get
+  return $ c <= n + 1
+
 traceAst :: MonadState DocState m => String -> m ()
 traceAst s = do
   DocState l n t <- get
@@ -2069,12 +2080,10 @@ data AstElemInfo = AstElemInfo {
 
 instance Monoid AstElemInfo where
    mempty  = AstElemInfo Nothing []
-   mappend (AstElemInfo x xs) (AstElemInfo y ys) = AstElemInfo (startPosCalc x y) ps
+   mappend (AstElemInfo x xs) (AstElemInfo y ys) = AstElemInfo (startPosCalc x y) (xs ++ ys)
     where
       startPosCalc Nothing p = p
       startPosCalc p _ = p
-      ps = xs ++ ys
-
 
 type AstElem = WriterT AstElemInfo DocM
 
