@@ -1128,10 +1128,10 @@ instance PrettyAst Exp where
       constrElem Lambda
         <*  infoElem "\\"
         <*  sepElem myFsep
-        <*> intersperse (sepElem myFsep) (map (annInfoElem . astPrettyPrec 2) patList)
+        <*> intersperse (sepElem myFsep) (map (annNoInfoElem . astPrettyPrec 2) patList)
         <*  sepElem myFsep
         <*  infoElem "->"
-        <*> (annInfoElem $ astPretty body)
+        <*> annNoInfoElem (astPretty body)
   -- keywords
   -- two cases for lets
   astPrettyPrec p (Let _ (BDecls _ declList) letBody)  =
