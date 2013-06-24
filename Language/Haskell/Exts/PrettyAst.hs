@@ -391,7 +391,7 @@ instance PrettyAst Decl where
   astPretty (FunBind _ ms) =
     resultPretty $ constrElem FunBind
       <*> intersperse (sep  <* sepElem myVcat) (annListElem annNoInfoElem ms)
-      <*  (if not $ null ms then sep else pure "")
+      <*  (if null ms then pure "" else sep)
     where
       sep = do
         PrettyMode mode _ <- ask
