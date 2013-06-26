@@ -2175,6 +2175,13 @@ resultPretty a = do
   (a', AstElemInfo (Just span)) <- runWriterT a
   return $ amap (const $ span) a'
 
+implicitOpenSep :: AstElem a -> AstElem a
+implicitOpenSep = censor (\ (AstElemInfo info) -> AstElemInfo $ impl info)
+  where
+    impl Nothing = Nothing
+    impl (Just (SrcSpanInfo span ps)) = Just (SrcSpanInfo span (sep span : ps))
+    sep  (SrcSpan f sl el _ _) = SrcSpan f sl el sl el
+
 implicitCloseSep :: AstElem ()
 implicitCloseSep = do
   isEmpty <- lift isEmptyLine
@@ -2318,8 +2325,7 @@ ppBody f dl =  do
     case layout mode of
       PPOffsideRule ->
            sepElem vcat
-        *> implicitElem "{ - just begin of body"
-        *> intersperse (implicitElem ";" <* sepElem vcat) dl
+        *> implicitOpenSep (intersperse (sepElem vcat <* implicitElem ";") dl)
         <* implicitCloseSep
       PPSemiColon   ->
            sepElem vcat
