@@ -2097,16 +2097,8 @@ spanFromString s = do
   ep <- getPos
   return $ mkSrcSpan sp ep
 
-spanFromQuotedString :: String -> DocM SrcSpan
-spanFromQuotedString s = do
-  sp <- getPos
-  _  <- format $ "'" ++ s ++ "'"
-  ep <- getPos
-  return $ mkSrcSpan sp ep
-
 stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
 stringElem fPoints s = do
-  start <- getPos
   span  <- lift $ spanFromString s
   tell $ AstElemInfo (Just start) (fPoints $ SrcSpanInfo span [span])
   let
@@ -2188,7 +2180,7 @@ resultPretty a = do
   let span = SrcSpanInfo (mkSrcSpan start end) ps
   return $ amap (const span) a'
 
-implicitCloseSep = do 
+implicitCloseSep = do
   isEmpty <- lift isEmptyLine
   if isEmpty
     then
@@ -2196,14 +2188,14 @@ implicitCloseSep = do
     else
       sepElem baseLine *> implicitItem
   where
-    
+
     implicitItem :: AstElem ()
     implicitItem = do
       DocState (SrcLoc f l c) n _ <- get
       tell $ AstElemInfo Nothing [SrcSpan f l c l 0]
       return ()
-  
-  
+
+
     isEmptyLine = do
       DocState (SrcLoc f l c) n _ <- get
       return $ c <= n + 1
