@@ -1,16 +1,12 @@
 import Language.Haskell.Exts.PrettyAst
 import Language.Haskell.Exts.Annotated
-import System.FilePath
-import System.Directory
+import System.FilePath    (takeFileName, (</>))
+import System.Directory   (getDirectoryContents)
 import System.Environment (getArgs)
-import Data.List (intercalate)
-import Control.Monad (mapM)
+import Data.List          (intercalate)
+import Control.Monad      (mapM)
+import Data.Traversable   (traverse)
 import Test.TestCases
-import Data.Traversable (traverse)
-
--- todo
--- update cabal file
--- add test: Call ast pretty -> exactPrint -> parseFileContents.
 
 main :: IO ()
 main = runTests =<< getArgs
