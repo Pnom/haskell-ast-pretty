@@ -165,7 +165,7 @@ testFiles = [
   ,"EmptyAnn.hs"
   ,"EmptyList.hs"
   ,"ImportSymbol.hs"
-  ,"IndentedWhere.hs" -- standart pretyfier generate diferent indent at BDecls
+  ,"IndentedWhere.hs" 
   ,"LanguagePragma.hs"
   ,"ParenFunBind.hs"
   ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout

@@ -90,8 +90,9 @@ reportPrettifying l filePath = do
     (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
     standartPretty  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
 
-  putStrLn "raw result of ast prettifying"
+putStrLn "raw result of ast prettifying"
   putStrLn . show $ fmap SrcSpanInfo' prettyRes
+  let simpleAstRes = fmap simplifySpanInfo prettyRes
   putStrLn ""
 
   putStrLn "parsing result"
@@ -99,14 +100,19 @@ reportPrettifying l filePath = do
   putStrLn ""
 
   putStrLn "result of standart prettifying"
-  putStrLn $ case parseFileContents standartPretty of
-    ParseOk a -> show $ fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) a
-    ParseFailed loc error -> show loc ++ " : " ++ error
+  case parseFileContents standartPretty of
+    ParseOk a -> do
+      let standartRes = fmap (\x -> simplifySpanInfo $ setSpanFilename fileName x) a
+      putStrLn $ (if standartRes == simpleAstRes
+          then "Standart pretty and ast pretty are the same"
+          else "Standart pretty and ast pretty aren't the same")
+      putStrLn $ show standartRes
+    ParseFailed loc error -> putStrLn $ show loc ++ " : " ++ error
 
   putStrLn ""
 
   putStrLn "result of ast prettifying"
-  putStrLn . show $ fmap simplifySpanInfo prettyRes
+  putStrLn $ show simpleAstRes
   putStrLn ""
 
   putStrLn "ast prettifying trace:"
