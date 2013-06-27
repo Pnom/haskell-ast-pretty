@@ -79,10 +79,10 @@ instance PrettyAst Module where
       body = pure (\os h i d ->  Module annStub h os i d)
         <*  implicitElem "{"
         <*> annNoInfoList os
-        <*  sepElemIf (not $ null os) layoutCat
+        <*  (if null os  then pure () else pragmaFinalSep $ last os)
         <*  implicitElem "}"
         <*> traverse (annNoInfoElem . astPretty) mbHead
-        <*  sepElemIf (isJust mbHead) layoutCat
+        <*  (getLayout >>= sepElemIf (isJust mbHead) . layoutCat)
 
       emptyBody = body <* implicitElem "{" <*> pure [] <* implicitElem ";" <*> pure [] <* implicitElem "}"
 
@@ -97,24 +97,27 @@ instance PrettyAst Module where
       semiColonBody = body
         <*  nestMode onsideIndent (infoElem "{" <* sepElem vcat)
         <*> nestMode onsideIndent (annNoInfoList imp)
-        <*  finalSemiColon layoutFromState imp
+        <*  finalSemiColon getLayout imp
         <*> nestMode onsideIndent (declList decls)
-        <*  finalSemiColon layoutFromState decls
+        <*  finalSemiColon getLayout decls
         <*  infoElem "}"
 
       noLayoutBody = body
         <*  infoElem "{"
-        <*  sepElem layoutCat
+        <*  (getLayout >>= sepElem . layoutCat)
         <*> annNoInfoList imp
-        <*  finalSemiColon layoutFromState imp
+        <*  finalSemiColon getLayout imp
         <*> declList decls
         <*  infoElem "}"
 
-      annNoInfoList xs = intersperse (layoutFromState >>= semiColon) $ annListElem annNoInfoElem xs
-      declList xs   = intersperse (layoutFromState >>= semiColon) $ map declFn xs
-      finalSemiColon f xs = if null xs then pure "" else f >>= semiColon
+      pragmaFinalSep p = getLayout >>=
+        if null imp && null decls then sepElem . layoutCat else semiColon
 
-      layoutFromState = do
+      annNoInfoList xs = intersperse (getLayout >>= semiColon) $ annListElem annNoInfoElem xs
+      declList xs   = intersperse (getLayout >>= semiColon) $ map declFn xs
+      finalSemiColon f xs = if null xs then pure () else f >>= semiColon
+
+      getLayout = do
         PrettyMode mode _ <- ask
         return $ layout mode
 
@@ -122,14 +125,13 @@ instance PrettyAst Module where
         emptyLine <- lift isEmptyLine
         let sep = if isNothing mbHead then implicitElem else infoElem
         case m of
-          PPOffsideRule -> sepElemIf (not emptyLine) vcat *> implicitElem ";"
-          PPNoLayout    -> sep ";" <* sepElem hsep
-          PPSemiColon   -> sep ";" <* sepElem vcat
-          PPInLine      -> sep ";" <* sepElem vcat
+          PPOffsideRule -> sepElemIf (not emptyLine) vcat <* implicitElem ";"
+          PPNoLayout    -> sep ";" *> sepElem hsep
+          PPSemiColon   -> sep ";" *> sepElem vcat
+          PPInLine      -> sep ";" *> sepElem vcat
 
-      layoutCat = do
-        PrettyMode mode _ <- ask
-        case layout mode of
+      layoutCat m =
+        case m of
           PPOffsideRule -> vcat
           PPNoLayout    -> hsep
           PPSemiColon   -> vcat
