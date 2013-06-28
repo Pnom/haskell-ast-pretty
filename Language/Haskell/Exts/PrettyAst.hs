@@ -66,32 +66,49 @@ class PrettyAst ast where
 
 instance PrettyAst Module where
   astPretty (Module _ mbHead os imp decls)
-    | null imp && null decls = resultPretty emptyBody
-    | isNothing mbHead       = resultPretty vcatBody
-    | otherwise = resultPretty $ do
+    | null imp && null decls = resultPretty $ pragmaBrace os $ vcatBody  imp decls
+    | isNothing mbHead       = resultPretty $ pragmaBrace os $ vcatBody  imp decls
+    | otherwise = resultPretty  $ pragmaBrace os $ do
       PrettyMode mode _ <- ask
       case layout mode of
-        PPOffsideRule -> vcatBody
+        PPOffsideRule -> (vcatBody  imp decls)
         PPSemiColon   -> semiColonBody
         PPInLine      -> semiColonBody
         PPNoLayout    -> noLayoutBody
     where
+
       body = pure (\os h i d ->  Module annStub h os i d)
-        <*  implicitElem "{"
-        <*> annNoInfoList os
-        <*  (if null os  then pure () else pragmaFinalSep $ last os)
-        <*  implicitElem "}"
+        <*> pragmaRes os
         <*> traverse (annNoInfoElem . astPretty) mbHead
         <*  (getLayout >>= sepElemIf (isJust mbHead) . layoutCat)
 
-      emptyBody = body <* implicitElem "{" <*> pure [] <* implicitElem ";" <*> pure [] <* implicitElem "}"
+      pragmaRes (x:xs) = implicitElem "{" *> annNoInfoList os <* pragmaFinalSep (last os) <* implicitElem "}"
+      pragmaRes [] = pure []
 
-      vcatBody = body
+      pragmaBrace [] = implicitOpenSep "{" $ implicitOpenSep "}"
+      pragmaBrace (x:xs) = id
+
+      vcatBody [] [] = body
         <*  implicitElem "{"
-        <*> annNoInfoList imp
-        <*  finalSemiColon (return PPOffsideRule) imp
+        <*> pure []
+        <* implicitElem ";"
+        <*> pure []
+        <* implicitElem "}"
+      vcatBody [] ds = body
+        <*> pure []
+        <*> implicitOpenSep "{" (declList decls)
+        <*  semiColon PPOffsideRule
+        <*  implicitElem "}"
+      vcatBody is [] = body
+        <*> implicitOpenSep "{" (annNoInfoList imp)
+        <*  semiColon PPOffsideRule
+        <*> pure []
+        <*  implicitElem "}"
+      vcatBody is ds = body
+        <*> implicitOpenSep "{" (annNoInfoList imp)
+        <*  semiColon PPOffsideRule
         <*> declList decls
-        <*  finalSemiColon (return PPOffsideRule) decls
+        <*  semiColon PPOffsideRule
         <*  implicitElem "}"
 
       semiColonBody = body
