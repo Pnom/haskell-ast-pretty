@@ -1201,8 +1201,19 @@ instance PrettyAst Exp where
   astPrettyPrec _ (TupleSection _ mExpList) =
     resultPretty $ constrElem TupleSection
       <*  infoElem "("
-      <*> intersperse (infoElem "," <* sepElem myFsepSimple) (map (traverse $ annNoInfoElem.astPretty) mExpList)
+      <*> sequenceA (tuples mExpList)
       <*  infoElem ")"
+      where
+        tuples [] = []
+        tuples (x:[]) = [tupleItem x]
+        tuples (x:xs) = tupleItem x : impl xs
+          where
+            impl (x:[]) =
+              (infoElem "," *> (if isJust x then sepElem myFsepSimple else pure ()) *> tupleItem x) : []
+            impl (x:xs) =
+              (infoElem "," *> sepElem myFsepSimple *> tupleItem x) : impl xs
+        tupleItem = traverse $ annNoInfoElem.astPretty
+
   -- weird stuff
   astPrettyPrec _ (Paren _ e) = resultPretty $ constrElem Paren
     <*  infoElem "("
