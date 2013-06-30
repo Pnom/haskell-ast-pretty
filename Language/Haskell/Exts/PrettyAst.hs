@@ -85,8 +85,8 @@ instance PrettyAst Module where
       pragmaRes (x:xs) = implicitElem "{" *> annNoInfoList os <* pragmaFinalSep (last os) <* implicitElem "}"
       pragmaRes [] = pure []
 
-      pragmaBrace [] = implicitOpenSep "{" $ implicitOpenSep "}"
-      pragmaBrace (x:xs) = id
+      pragmaBrace [] = implicitOpenSep "{" . implicitOpenSep "}"
+      pragmaBrace _  = id
 
       vcatBody [] [] = body
         <*  implicitElem "{"
@@ -235,7 +235,7 @@ instance PrettyAst ImportDecl where
       <*  sepElem fsep
       <*> (if src then pure src <* infoElem "{-# SOURCE #-}" <* sepElem fsep else pure src)
       <*> (if qual then pure qual <* infoElem "qualified" <* sepElem fsep else pure qual)
-      <*> traverse (\x -> infoElem (" " ++ x ++ " ") <* sepElem fsep) mbPkg -- " " ++ x ++ " " we jast add two symbols to SrcSpanInfo for quotes
+      <*> traverse (\x -> quoteStringElem x <* sepElem fsep) mbPkg
       <*> (annNoInfoElem $ astPretty mod)
       <*> traverse (\ x -> sepElem fsep *> infoElem "as" *> sepElem hsep *> (annNoInfoElem $ astPretty x)) mbName
       <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mbSpecs
@@ -1351,9 +1351,7 @@ instance PrettyAst Exp where
       -- myFsep
       <*  noInfoElem "{-# CORE"
       <*  sepElem myFsep
-      <*  noInfoElem "\""
-      <*> infoElem s
-      <*  noInfoElem "\""
+      <*> quoteStringElem s
       <*  sepElem myFsep
       <*  infoElem "#-}"
       <*  sepElem myFsep
@@ -1363,9 +1361,7 @@ instance PrettyAst Exp where
       -- myFsep
       <*  noInfoElem "{-# SCC"
       <*  sepElem myFsep
-      <*  noInfoElem "\""
-      <*> infoElem s
-      <*  noInfoElem "\""
+      <*> quoteStringElem s
       <*  sepElem myFsep
       <*  infoElem "#-}"
       <*  sepElem myFsep
@@ -1375,9 +1371,7 @@ instance PrettyAst Exp where
       -- myFsep
       <*  noInfoElem "{-# GENERATED"
       <*  sepElem myFsep
-      <*  noInfoElem "\""
-      <*> infoElem s
-      <*  noInfoElem "\""
+      <*> quoteStringElem s
       <*  sepElem myFsep
       <*> tpl(a, b)
       <*  sepElem myFsep
@@ -2140,6 +2134,9 @@ annElem pointFn spanFn el = do
 
 infoElem :: String -> AstElem String
 infoElem s = stringElem mainPoint s
+
+quoteStringElem :: String -> AstElem String
+quoteStringElem s = stringElem mainPoint (" " ++ s ++ " ") -- " " ++ s ++ " " we jast add two symbols to SrcSpanInfo for quotes
 
 noInfoElem :: String -> AstElem String
 noInfoElem s = stringElem noPoints s
