@@ -491,14 +491,15 @@ instance PrettyAst Decl where
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem InlineConlikeSig
       -- mySep
       <* infoElem "{-# INLINE_CONLIKE"
-      <*> traverse (\ x -> sepElem fsep *> (annNoInfoElem $ astPretty x)) mActivation
+      <*> traverse (\ x -> sepElem fsep *> annNoInfoElem (astPretty x)) mActivation
       <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty qName)
       <*  infoElem "#-}"
-  astPretty (SpecSig _ qName ts) =
+  astPretty (SpecSig _ mActivation qName ts) =
     blankline.resultPretty.(nestMode onsideIndent) $ constrElem SpecSig
       -- mySep
       <*  infoElem "{-# SPECIALISE"
+      <*> traverse (\ x -> sepElem fsep *> annNoInfoElem (astPretty x)) mActivation
       <*  sepElem fsep
       <*> (annNoInfoElem $ astPretty qName)
       <*  sepElem fsep
@@ -977,11 +978,11 @@ instance PrettyAst Type where
   astPrettyPrec _ (TyTuple _ bxd l) =
     resultPretty $ constrElem TyTuple
       <*> pure bxd
-      <*> l'
+      <*> parenFn (annListElem annNoInfoElem l)
     where
-      l' = case bxd of
-        Boxed   -> parenList (annListElem annNoInfoElem l)
-        Unboxed -> hashParenList (annListElem annNoInfoElem l)
+      parenFn = case bxd of
+        Boxed   -> parenList
+        Unboxed -> hashParenList
   astPrettyPrec _ (TyList _ t)  = resultPretty $ constrElem TyList <*> t'
     where t' = enclose (infoElem "[") (infoElem "]") ((annNoInfoElem $ astPretty t))
   astPrettyPrec  p (TyApp _ a b) =
@@ -1196,13 +1197,17 @@ instance PrettyAst Exp where
   astPrettyPrec _ (Var _ name) = resultPretty $ constrElem Var <*> (pointsInfoElem $ astPretty name)
   astPrettyPrec _ (IPVar _ ipname) = resultPretty $ constrElem IPVar <*> (annInfoElem $ astPretty ipname)
   astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (pointsInfoElem $ astPretty name)
-  astPrettyPrec _ (Tuple _ expList) = resultPretty $ constrElem Tuple
-    <*> parenList (annListElem annNoInfoElem expList)
-  astPrettyPrec _ (TupleSection _ mExpList) =
+  astPrettyPrec _ (Tuple _ bxd expList) = resultPretty $ constrElem Tuple
+      <*> pure bxd
+      <*> parenFn (annListElem annNoInfoElem expList)
+    where
+      parenFn = case bxd of
+        Boxed   -> parenList
+        Unboxed -> hashParenList
+  astPrettyPrec _ (TupleSection _ bxd mExpList) =
     resultPretty $ constrElem TupleSection
-      <*  infoElem "("
-      <*> sequenceA (tuples mExpList)
-      <*  infoElem ")"
+      <*> pure bxd
+      <*> parenFn (tuples mExpList)
       where
         tuples [] = []
         tuples (x:[]) = [tupleItem x]
@@ -1213,6 +1218,10 @@ instance PrettyAst Exp where
             impl (x:xs) =
               (infoElem "," *> sepElem myFsepSimple *> tupleItem x) : impl xs
         tupleItem = traverse $ annNoInfoElem.astPretty
+        parenFn = case bxd of
+          Boxed   -> parenList
+          Unboxed -> hashParenList
+
 
   -- weird stuff
   astPrettyPrec _ (Paren _ e) = resultPretty $ constrElem Paren
@@ -1538,7 +1547,13 @@ instance PrettyAst Pat where
         <*> annNoInfoElem (astPretty n)
         <*  sepElem myFsep
         <*> intersperse (sepElem myFsep) (map (annNoInfoElem.astPrettyPrec 2) ps)
-  astPrettyPrec _ (PTuple _ ps) = resultPretty $ constrElem PTuple <*> parenList (annListElem annNoInfoElem ps)
+  astPrettyPrec _ (PTuple _ bxd ps) = resultPretty $ constrElem PTuple
+    <*> pure bxd
+    <*> parenFn (annListElem annNoInfoElem ps)
+    where
+      parenFn = case bxd of
+        Boxed   -> parenList
+        Unboxed -> hashParenList
   astPrettyPrec _ (PList _ ps) =
     resultPretty $ constrElem PList
       <*  infoElem "["
