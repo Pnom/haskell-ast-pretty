@@ -978,11 +978,7 @@ instance PrettyAst Type where
   astPrettyPrec _ (TyTuple _ bxd l) =
     resultPretty $ constrElem TyTuple
       <*> pure bxd
-      <*> parenFn (annListElem annNoInfoElem l)
-    where
-      parenFn = case bxd of
-        Boxed   -> parenList
-        Unboxed -> hashParenList
+      <*> tupleParen bxd (annListElem annNoInfoElem l)
   astPrettyPrec _ (TyList _ t)  = resultPretty $ constrElem TyList <*> t'
     where t' = enclose (infoElem "[") (infoElem "]") ((annNoInfoElem $ astPretty t))
   astPrettyPrec  p (TyApp _ a b) =
@@ -1199,15 +1195,11 @@ instance PrettyAst Exp where
   astPrettyPrec _ (Con _ name) = resultPretty $ constrElem Con <*> (pointsInfoElem $ astPretty name)
   astPrettyPrec _ (Tuple _ bxd expList) = resultPretty $ constrElem Tuple
       <*> pure bxd
-      <*> parenFn (annListElem annNoInfoElem expList)
-    where
-      parenFn = case bxd of
-        Boxed   -> parenList
-        Unboxed -> hashParenList
+      <*> tupleParen bxd (annListElem annNoInfoElem expList)
   astPrettyPrec _ (TupleSection _ bxd mExpList) =
     resultPretty $ constrElem TupleSection
       <*> pure bxd
-      <*> parenFn (tuples mExpList)
+      <*> tupleParen bxd (tuples mExpList)
       where
         tuples [] = []
         tuples (x:[]) = [tupleItem x]
@@ -1218,10 +1210,6 @@ instance PrettyAst Exp where
             impl (x:xs) =
               (infoElem "," *> sepElem myFsepSimple *> tupleItem x) : impl xs
         tupleItem = traverse $ annNoInfoElem.astPretty
-        parenFn = case bxd of
-          Boxed   -> parenList
-          Unboxed -> hashParenList
-
 
   -- weird stuff
   astPrettyPrec _ (Paren _ e) = resultPretty $ constrElem Paren
@@ -1549,11 +1537,7 @@ instance PrettyAst Pat where
         <*> intersperse (sepElem myFsep) (map (annNoInfoElem.astPrettyPrec 2) ps)
   astPrettyPrec _ (PTuple _ bxd ps) = resultPretty $ constrElem PTuple
     <*> pure bxd
-    <*> parenFn (annListElem annNoInfoElem ps)
-    where
-      parenFn = case bxd of
-        Boxed   -> parenList
-        Unboxed -> hashParenList
+    <*> tupleParen bxd (annListElem annNoInfoElem ps)
   astPrettyPrec _ (PList _ ps) =
     resultPretty $ constrElem PList
       <*  infoElem "["
@@ -1665,6 +1649,11 @@ instance PrettyAst Pat where
     resultPretty $ constrElem PBangPat
       <*  infoElem "!"
       <*> annInfoElem (astPrettyPrec 2 pat)
+
+tupleParen bxd ls = infoElem openParen *> sequenceA ls <* infoElem closeParen
+  where
+    openParen  = if bxd == Boxed then "(" else "{#"
+    closeParen = if bxd == Boxed then ")" else "#}"
 
 -- --------------------------------------------------------------------------
 
