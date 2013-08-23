@@ -2349,7 +2349,12 @@ blankline x = newLine >> x
         else return ()
 
 ppBody :: (PR.PPHsMode -> Int) -> [AstElem a] -> AstElem [a]
-ppBody _ [] = implicitElem "{" *> pure [] <* implicitElem "}"
+ppBody _ [] = 
+     sepElem vcat 
+  *> implicitElem "{" --implicitOpenSep "{ - just begin of body" 
+  *> pure []
+  <* implicitElem ";"
+  <* implicitCloseSep "}"
 ppBody f dl =  do
   (PrettyMode mode _) <- ask
   nest (f mode) $
