@@ -22,7 +22,7 @@ import Control.Applicative
 
 import Data.Maybe
 import Data.List hiding (intersperse)
-import Data.Traversable
+import Data.Traversable as Tr
 import Data.Char (isSpace)
 
 data DocState = DocState {
@@ -66,9 +66,9 @@ class PrettyAst ast where
 
 instance PrettyAst Module where
   astPretty (Module _ mbHead os imp decls)
-    | null imp && null decls = resultPretty $ pragmaBrace os $ vcatBody  imp decls
-    | isNothing mbHead       = resultPretty $ pragmaBrace os $ vcatBody  imp decls
-    | otherwise = resultPretty  $ pragmaBrace os $ do
+    | null imp && null decls = resultPretty $ pragmaBrace os *> vcatBody  imp decls
+    | isNothing mbHead       = resultPretty $ pragmaBrace os *> vcatBody  imp decls
+    | otherwise = resultPretty  $ pragmaBrace os *> do
       PrettyMode mode _ <- ask
       case layout mode of
         PPOffsideRule -> (vcatBody  imp decls)
@@ -82,34 +82,24 @@ instance PrettyAst Module where
         <*> traverse (annNoInfoElem . astPretty) mbHead
         <*  (getLayout >>= sepElemIf (isJust mbHead) . layoutCat)
 
-      pragmaRes (x:xs) = implicitElem "{" *> annNoInfoList os <* pragmaFinalSep (last os) <* implicitElem "}"
+      pragmaRes (x:xs) = implicitElem "{" *> annNoInfoList os <* finalCat <* implicitSep ";" <* implicitSep "}"
       pragmaRes [] = pure []
 
-      pragmaBrace [] = implicitOpenSep "{" . implicitOpenSep "}"
-      pragmaBrace _  = id
+      pragmaBrace [] = implicitSep "{" *> implicitSep "}"
+      pragmaBrace _  = pure ()
 
       vcatBody [] [] = body
         <*  implicitElem "{"
         <*> pure []
-        <* implicitElem ";"
         <*> pure []
         <* implicitElem "}"
-      vcatBody [] ds = body
-        <*> pure []
-        <*> implicitOpenSep "{" (declList decls)
-        <*  semiColon PPOffsideRule
-        <*  implicitElem "}"
-      vcatBody is [] = body
-        <*> implicitOpenSep "{" (annNoInfoList imp)
-        <*  semiColon PPOffsideRule
-        <*> pure []
-        <*  implicitElem "}"
       vcatBody is ds = body
-        <*> implicitOpenSep "{" (annNoInfoList imp)
-        <*  semiColon PPOffsideRule
+        <*  implicitSep "{"
+        <*> annNoInfoList imp
+        <*  (if null imp then pure () else finalCat <* implicitElem ";")
         <*> declList decls
-        <*  semiColon PPOffsideRule
-        <*  implicitElem "}"
+        <*  (if null decls then pure () else finalCat <* implicitElem ";")
+        <*  implicitSep "}"
 
       semiColonBody = body
         <*  nestMode onsideIndent (infoElem "{" <* sepElem vcat)
@@ -131,7 +121,16 @@ instance PrettyAst Module where
         if null imp && null decls then sepElem . layoutCat else semiColon
 
       annNoInfoList xs = intersperse (getLayout >>= semiColon) $ annListElem annNoInfoElem xs
-      declList xs   = intersperse (getLayout >>= semiColon) $ map declFn xs
+
+      declList xs   = intersperse (finalCat *> implicitSep ";") $ map declFn xs
+
+      finalCat = do
+        emptyLine <- lift isEmptyLine
+        sepElemIf (not emptyLine) vcat
+
+      declFn d@(FunBind _ _) = prettyFunBind $ astPretty d
+      declFn d = annNoInfoElem $ astPretty d
+
       finalSemiColon f xs = if null xs then pure () else f >>= semiColon
 
       getLayout = do
@@ -154,9 +153,6 @@ instance PrettyAst Module where
           PPSemiColon   -> vcat
           PPInLine      -> vcat
 
-      declFn d@(FunBind _ _) = prettyFunBind $ astPretty d
-      declFn d = annNoInfoElem $ astPretty d
-
       prettyFunBind fb = do
         (FunBind span ms) <- lift fb
         if null ms
@@ -170,7 +166,7 @@ instance PrettyAst Module where
               fbPs = srcInfoPoints span
               span' = mergeSrcSpan startFb endFb
 
-            tell $ AstElemInfo (Just $ SrcSpanInfo span' fbPs)
+            tell $ AstElemInfo (Just $ SrcSpanInfo span' fbPs) 0
             return $ FunBind (SrcSpanInfo span' matchPs) ms
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -2101,17 +2097,31 @@ space x = do
 -- --------------------------------------------------------------------------
 -- AstElem definition
 
-data AstElemInfo = AstElemInfo (Maybe SrcSpanInfo) deriving Show
+data AstElemInfo = AstElemInfo {
+  spanInfo :: Maybe SrcSpanInfo,
+  implicitElemCount :: Int
+} deriving Show
+
+traceImplicit :: String -> Maybe SrcSpanInfo -> Int -> Int
+traceImplicit s a x = x -- if x == 0 then x else traceShow ("~~~", s, a, x) x
 
 instance Monoid AstElemInfo where
-   mempty  = AstElemInfo Nothing
-   mappend (AstElemInfo x) (AstElemInfo y) = AstElemInfo (spanCalc x y)
+  mempty  = AstElemInfo Nothing  0
+  mappend (AstElemInfo Nothing  ac) (AstElemInfo Nothing  bc) = AstElemInfo Nothing (ac + bc)
+  mappend (AstElemInfo (Just a) ac) (AstElemInfo Nothing  bc) = AstElemInfo (Just a) (ac + bc)
+  mappend (AstElemInfo Nothing  ac) (AstElemInfo (Just b) bc) = AstElemInfo (Just $ addImplicitPoint ac b) bc
+  mappend (AstElemInfo (Just a) ac) (AstElemInfo (Just b) bc) = AstElemInfo (Just $ mergeSpan a (addImplicitPoint ac b)) bc
     where
-      spanCalc Nothing Nothing = Nothing
-      spanCalc (Just p) Nothing = Just p
-      spanCalc Nothing (Just p) = Just p
-      spanCalc (Just a) (Just b) = Just $
-        SrcSpanInfo (mergeSrcSpan (srcInfoSpan a) (srcInfoSpan b)) (srcInfoPoints a ++ srcInfoPoints b)
+      mergeSpan a b = SrcSpanInfo (mergeSrcSpan (srcInfoSpan a) (srcInfoSpan b)) (srcInfoPoints a ++ srcInfoPoints b)
+
+addImplicitPoint c (SrcSpanInfo s@(SrcSpan f sl sc _ _) ps) = SrcSpanInfo s $ if c == 0 then ps else ps'
+  where
+    ps' = (startImplicitPointsList c s) ++ ps
+
+
+startImplicitPointsList c (SrcSpan f sl sc _ _) = take c .repeat $ SrcSpan f sl sc sl sc
+endImplicitPointsList c (SrcSpan f _ _ el ec) = take c .repeat $ SrcSpan f el ec el ec
+
 
 type AstElem = WriterT AstElemInfo DocM
 
@@ -2128,7 +2138,7 @@ spanFromString s = do
 stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
 stringElem fPoints s = do
   span  <- lift $ spanFromString s
-  tell $ AstElemInfo (Just $ SrcSpanInfo span (fPoints $ SrcSpanInfo span [span]))
+  tell $ AstElemInfo (Just $ SrcSpanInfo span (fPoints $ SrcSpanInfo span [span])) 0
   let
     lstrip = dropWhile isSpace
     rstrip = reverse . lstrip . reverse
@@ -2144,7 +2154,7 @@ annElem :: (Annotated ast) => (SrcSpanInfo -> [SrcSpan]) -> (SrcSpanInfo -> SrcS
 annElem pointFn spanFn el = do
   e <- lift el
   let span = ann e
-  tell $ AstElemInfo (Just $ SrcSpanInfo (srcInfoSpan span) (pointFn span))
+  tell $ AstElemInfo (Just $ SrcSpanInfo (srcInfoSpan span) (pointFn span)) 0
   return $ amap spanFn e
 
 infoElem :: String -> AstElem String
@@ -2203,37 +2213,26 @@ nestMode f a = do
 
 resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
 resultPretty a = do
-  (a', AstElemInfo (Just span)) <- runWriterT a
-  return $ amap (const $ span) a'
+  (a', AstElemInfo (Just (SrcSpanInfo span ps)) c) <- runWriterT a
+  let trace s = s -- if c == 0 then s else traceShow ("*** resultPretty", s, c) s
+  return $ amap (const $ SrcSpanInfo (trace span) (ps ++ endImplicitPointsList c span)) a'
 
-implicitOpenSep :: String -> AstElem a -> AstElem a
-implicitOpenSep _ = censor (\ (AstElemInfo info) -> AstElemInfo $ impl info)
-  where
-    impl Nothing = Nothing
-    impl (Just (SrcSpanInfo span ps)) = Just (SrcSpanInfo span (sep span : ps))
-    sep  (SrcSpan f sl el _ _) = SrcSpan f sl el sl el
+implicitSep :: String -> AstElem ()
+implicitSep _ = do
+  tell $ AstElemInfo Nothing 1
+  return ()
 
 implicitCloseSep :: String -> AstElem ()
 implicitCloseSep _ = do
   isEmpty <- lift isEmptyLine
-  if isEmpty
-    then
-      implicitItem
-    else
-      sepElem baseLine *> implicitItem
+  sepElemIf (not isEmpty) baseLine *> implicitItem
   where
-
     implicitItem :: AstElem ()
     implicitItem = do
       DocState (SrcLoc f l c) n _ <- get
       let span = SrcSpan f l c l 0
-      tell $ AstElemInfo (Just $ SrcSpanInfo span [span])
+      tell $ AstElemInfo (Just $ SrcSpanInfo span [span]) 0
       return ()
-
-    isEmptyLine = do
-      DocState (SrcLoc f l c) n _ <- get
-      return $ c <= n + 1
-
     baseLine :: DocM ()
     baseLine =
       do
@@ -2349,9 +2348,9 @@ blankline x = newLine >> x
         else return ()
 
 ppBody :: (PR.PPHsMode -> Int) -> [AstElem a] -> AstElem [a]
-ppBody _ [] = 
-     sepElem vcat 
-  *> implicitElem "{" --implicitOpenSep "{ - just begin of body" 
+ppBody _ [] =
+     sepElem vcat
+  *> implicitElem "{" --implicitOpenSep "{ - just begin of body"
   *> pure []
   <* implicitElem ";"
   <* implicitCloseSep "}"
@@ -2361,7 +2360,8 @@ ppBody f dl =  do
     case layout mode of
       PPOffsideRule ->
            sepElem vcat
-        *> implicitOpenSep "{ - just begin of body" (intersperse (sepElem vcat <* implicitElem ";") dl)
+        *> implicitSep "{ - just begin of body"
+        *> intersperse (sepElem vcat <* implicitElem ";") dl
         <* implicitCloseSep "}"
       PPSemiColon   ->
            sepElem vcat
