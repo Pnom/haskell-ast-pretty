@@ -166,7 +166,7 @@ instance PrettyAst Module where
               fbPs = srcInfoPoints span
               span' = mergeSrcSpan startFb endFb
 
-            tell $ AstElemInfo (Just $ SrcSpanInfo span' fbPs) 0
+            tell $ AstElemInfo (Just $ SrcSpanInfo span' fbPs) []
             return $ FunBind (SrcSpanInfo span' matchPs) ms
 
   astPretty (XmlPage _ _mn os n attrs mattr cs) = unimplemented
@@ -2093,31 +2093,30 @@ space x = do
 -- --------------------------------------------------------------------------
 -- AstElem definition
 
+data ImplicitSep = ShiftedSep | CloseSep
+  deriving (Show, Eq)
+
 data AstElemInfo = AstElemInfo {
   spanInfo :: Maybe SrcSpanInfo,
-  implicitElemCount :: Int
+  implicitLs :: [ImplicitSep]
 } deriving Show
 
 traceImplicit :: String -> Maybe SrcSpanInfo -> Int -> Int
 traceImplicit s a x = x -- if x == 0 then x else traceShow ("~~~", s, a, x) x
 
 instance Monoid AstElemInfo where
-  mempty  = AstElemInfo Nothing  0
-  mappend (AstElemInfo Nothing  ac) (AstElemInfo Nothing  bc) = AstElemInfo Nothing (ac + bc)
-  mappend (AstElemInfo (Just a) ac) (AstElemInfo Nothing  bc) = AstElemInfo (Just a) (ac + bc)
-  mappend (AstElemInfo Nothing  ac) (AstElemInfo (Just b) bc) = AstElemInfo (Just $ addImplicitPoint ac b) bc
-  mappend (AstElemInfo (Just a) ac) (AstElemInfo (Just b) bc) = AstElemInfo (Just $ mergeSpan a (addImplicitPoint ac b)) bc
+  mempty  = AstElemInfo Nothing []
+  mappend (AstElemInfo Nothing  aes) (AstElemInfo Nothing  bes) = AstElemInfo Nothing (aes ++ bes)
+  mappend (AstElemInfo (Just a) aes) (AstElemInfo Nothing  bes) = AstElemInfo (Just a) (aes ++ bes)
+  mappend (AstElemInfo Nothing  aes) (AstElemInfo (Just b) bes) = AstElemInfo (Just $ addImplicitPoint aes b) bes
+  mappend (AstElemInfo (Just a) aes) (AstElemInfo (Just b) bes) = AstElemInfo (Just $ mergeSpan a (addImplicitPoint aes b)) bes
     where
       mergeSpan a b = SrcSpanInfo (mergeSrcSpan (srcInfoSpan a) (srcInfoSpan b)) (srcInfoPoints a ++ srcInfoPoints b)
 
-addImplicitPoint c (SrcSpanInfo s@(SrcSpan f sl sc _ _) ps) = SrcSpanInfo s $ if c == 0 then ps else ps'
+addImplicitPoint ips (SrcSpanInfo s ps) = SrcSpanInfo s $ (map (ipoint s) ips) ++  ps
   where
-    ps' = (startImplicitPointsList c s) ++ ps
-
-
-startImplicitPointsList c (SrcSpan f sl sc _ _) = take c .repeat $ SrcSpan f sl sc sl sc
-endImplicitPointsList c (SrcSpan f _ _ el ec) = take c .repeat $ SrcSpan f el ec el ec
-
+    ipoint (SrcSpan f sl sc _ _) ShiftedSep = SrcSpan f sl sc sl sc
+    ipoint (SrcSpan f sl sc _ _) CloseSep   = SrcSpan f sl sc sl 0
 
 type AstElem = WriterT AstElemInfo DocM
 
@@ -2134,7 +2133,7 @@ spanFromString s = do
 stringElem ::(SrcSpanInfo -> [SrcSpan]) -> String ->  AstElem String
 stringElem fPoints s = do
   span  <- lift $ spanFromString s
-  tell $ AstElemInfo (Just $ SrcSpanInfo span (fPoints $ SrcSpanInfo span [span])) 0
+  tell $ AstElemInfo (Just $ SrcSpanInfo span (fPoints $ SrcSpanInfo span [span])) []
   let
     lstrip = dropWhile isSpace
     rstrip = reverse . lstrip . reverse
@@ -2150,7 +2149,7 @@ annElem :: (Annotated ast) => (SrcSpanInfo -> [SrcSpan]) -> (SrcSpanInfo -> SrcS
 annElem pointFn spanFn el = do
   e <- lift el
   let span = ann e
-  tell $ AstElemInfo (Just $ SrcSpanInfo (srcInfoSpan span) (pointFn span)) 0
+  tell $ AstElemInfo (Just $ SrcSpanInfo (srcInfoSpan span) (pointFn span)) []
   return $ amap spanFn e
 
 infoElem :: String -> AstElem String
@@ -2209,13 +2208,15 @@ nestMode f a = do
 
 resultPretty :: Annotated ast => AstElem (ast SrcSpanInfo) -> DocM (ast SrcSpanInfo)
 resultPretty a = do
-  (a', AstElemInfo (Just (SrcSpanInfo span ps)) c) <- runWriterT a
-  let trace s = s -- if c == 0 then s else traceShow ("*** resultPretty", s, c) s
-  return $ amap (const $ SrcSpanInfo (trace span) (ps ++ endImplicitPointsList c span)) a'
+  (a', AstElemInfo (Just (SrcSpanInfo span ps)) ies) <- runWriterT a
+  let
+    ipoint (SrcSpan f _ _ el ec) ShiftedSep = SrcSpan f el ec el ec
+    ipoint (SrcSpan f _ _ el ec) CloseSep   = SrcSpan f el 1 el 0
+  return $ amap (const $ SrcSpanInfo span (ps ++ map (ipoint span) ies)) a'
 
 implicitSep :: String -> AstElem ()
 implicitSep _ = do
-  tell $ AstElemInfo Nothing 1
+  tell $ AstElemInfo Nothing [ShiftedSep]
   return ()
 
 implicitCloseSep :: String -> AstElem ()
@@ -2227,7 +2228,7 @@ implicitCloseSep _ = do
     implicitItem = do
       DocState (SrcLoc f l c) n _ <- get
       let span = SrcSpan f l c l 0
-      tell $ AstElemInfo (Just $ SrcSpanInfo span [span]) 0
+      tell $ AstElemInfo (Just $ SrcSpanInfo span []) [CloseSep]
       return ()
     baseLine :: DocM ()
     baseLine =
