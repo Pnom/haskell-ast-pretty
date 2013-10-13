@@ -90,7 +90,7 @@ reportPrettifying l filePath = do
     (prettyRes, trace) = renderWithTrace fileName (setLayoutToDefMode l) parsingRes
     standartPretty  = prettyPrintWithMode (setLayoutToDefPRMode l) parsingRes
 
-putStrLn "raw result of ast prettifying"
+  putStrLn "raw result of ast prettifying"
   putStrLn . show $ fmap SrcSpanInfo' prettyRes
   let simpleAstRes = fmap simplifySpanInfo prettyRes
   putStrLn ""
@@ -165,7 +165,7 @@ testFiles = [
   ,"EmptyAnn.hs"
   ,"EmptyList.hs"
   ,"ImportSymbol.hs"
-  ,"IndentedWhere.hs" 
+  ,"IndentedWhere.hs"
   ,"LanguagePragma.hs"
   ,"ParenFunBind.hs"
   ,"NPlusK.hs" -- parser produce an error on the standart prettyfier result with layouts PPInLine and PPNoLayout

@@ -1542,7 +1542,6 @@ instance PrettyAst Pat where
       <*  infoElem ")"
   astPrettyPrec _ (PRec _ c fields) = resultPretty $ constrElem PRec
     <*> annNoInfoElem (astPretty c)
-    <*  sepElem myFsep
     <*  infoElem "{"
     <*> intersperse parenListSep (annListElem annNoInfoElem fields)
     <*  infoElem "}"
